@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+import rospy
+from reba_optim.matlab_bridge import MatlabBridge
+
+if __name__ == "__main__":
+    # initialize ros node
+    rospy.init_node('matlab_bridge')
+    # create Matlab bridge
+    matlab = MatlabBridge()
+    # run the service
+    matlab.run()
