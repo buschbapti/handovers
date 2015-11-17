@@ -1,6 +1,6 @@
 import rospy
 import os.path
-from reba_optim.srv import *
+from reba_optim.srv import TrajectoryFromReba, TrajectoryFromRebaResponse
 from trajectory_msgs.msg import JointTrajectory
 import transformations
 

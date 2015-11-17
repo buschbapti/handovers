@@ -1,0 +1,3 @@
+geometry_msgs/Pose hip_pose
+---
+geometry_msgs/Pose hand_over_location
