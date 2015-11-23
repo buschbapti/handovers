@@ -1,0 +1,20 @@
+<launch>
+	<arg name="ip" /> <!-- IP of the VRPN server (like Motive or Arena) -->
+  	<arg name="port" default="3883" /> <!-- Port of the VRPN server (default 3883) -->
+  	<arg name="opt_port" default="3884" /> <!-- Port of the VRPN server (default 3883) -->
+
+	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" output="screen"/>
+	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher.py" output="screen"/>
+	
+	<node name="matlab_bridge" pkg="reba_optim" type="matlab_bridge" output="screen"/>
+	<include file="$(find reba_optim)/launch/reba_server.launch"/>
+	<include file="$(find baxter_commander)/launch/commander.launch"/>
+
+
+	<include file="$(find kinect_skeleton_publisher)/launch/kinect_skeleton_publisher.launch" >
+      <arg name="ip" value="$(arg ip)"/> <!-- IP of the VRPN server (like Motive or Arena) -->
+      <arg name="port" value="$(arg port)"/> <!-- Port of the VRPN server (default 3883) -->
+      <arg name="opt_port" value="$(arg opt_port)"/> <!-- Port of the VRPN server (default 3883) -->
+   </include>
+
+</launch>

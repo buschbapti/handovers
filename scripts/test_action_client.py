@@ -6,8 +6,8 @@ import actionlib
 from reba_optim.msg import RebaHandOverActionGoal, RebaHandOverAction
 
 if __name__ == '__main__':
-    rospy.init_node('/reba/comfort_pose_action_server')
-    client = actionlib.SimpleActionClient('/thr/run_mdp_action', RebaHandOverAction)
+    rospy.init_node('reba_comfort_pose_action_server')
+    client = actionlib.SimpleActionClient('/reba/comfort_pose_action_server', RebaHandOverAction)
     client.wait_for_server()
 
     goal = RebaHandOverActionGoal()

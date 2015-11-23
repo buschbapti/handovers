@@ -1,11 +1,34 @@
 #!/usr/bin/env python
 import rospy
 from reba_optim.srv import RebaPose, RebaPoseResponse
+import numpy as np
+import tf
+import rospkg
+import transformations
 
-def cb_reba_request_received(reba_pose_req):
-    return RebaPoseResponse()
+class RebaServer:
+    def __init__(self):
+        self.tf_hip = rospy.get_param('/reba/hand_over_location')
+        self.tfl = tf.TransformListener()
 
-rospy.init_node('reba_server')
-rospy.Service('/reba/get_reba', RebaPose, cb_reba_request_received)
-rospy.loginfo('REBA server running...')
-rospy.spin()
+    def cb_reba_request_received(self, reba_pose_req):
+        # read tf from VREP to hip
+        tf_hip = reba_pose_req.hip_pose
+        # read transformation from hip to handover location from parameter server
+        tf_hand = rospy.get_param('/reba/hand_over_location')
+        # multiply the two tf
+        tf_hand_over = transformations.multiply_transform(tf_hip, tf_hand)
+        # create the Pose response
+        pose = transformations.list_to_pose(tf_hand_over).pose
+        return RebaPoseResponse(hand_over_location=pose)
+
+    def run(self):
+        rospy.Service('/reba/get_reba', RebaPose, self.cb_reba_request_received)
+        rospy.loginfo('REBA server running...')
+        rospy.spin()
+
+if __name__ == "__main__":
+    rospy.init_node('reba_server')
+    reba = RebaServer()
+    reba.run()
+    
