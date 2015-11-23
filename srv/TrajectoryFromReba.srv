@@ -1,3 +1,5 @@
 geometry_msgs/Pose hand_over_location
+geometry_msgs/Pose object_location
 ---
-trajectory_msgs/JointTrajectory joint_trajectory
+trajectory_msgs/JointTrajectory trajectory_to_object
+trajectory_msgs/JointTrajectory trajectory_to_handover

@@ -1,2 +1,11 @@
 #!/usr/bin/env python
 import rospy
+from reba_optim.srv import RebaPose, RebaPoseResponse
+
+def cb_reba_request_received(reba_pose_req):
+    return RebaPoseResponse()
+
+rospy.init_node('reba_server')
+rospy.Service('/reba/get_reba', RebaPose, cb_reba_request_received)
+rospy.loginfo('REBA server running...')
+rospy.spin()

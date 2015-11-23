@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   trajectory_msgs
   message_generation
+  actionlib_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -59,11 +60,10 @@ add_service_files(
 )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+ add_action_files(
+   FILES
+   RebaHandOver.action
+)
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
@@ -71,6 +71,7 @@ generate_messages(
    std_msgs  # Or other packages containing msgs
    geometry_msgs
    trajectory_msgs
+   actionlib_msgs
 )
 
 ################################################
@@ -105,7 +106,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES reba_optim
-#  CATKIN_DEPENDS rospy
+  CATKIN_DEPENDS rospy actionlib_msgs
 #  DEPENDS system_lib
 )
 
