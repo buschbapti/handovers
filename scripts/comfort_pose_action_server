@@ -5,7 +5,7 @@ import tf
 import transformations
 from baxter_commander import ArmCommander
 from actionlib import SimpleActionServer
-from reba_optim.msg import RebaHandOverActionGoal, RebaHandOverAction, RebaHandOverActionFeedback, RebaHandOverActionResult, RebaHandOverFeedback
+from reba_optim.msg import RebaHandOverAction, RebaHandOverResult, RebaHandOverFeedback
 from reba_optim.srv import TrajectoryFromReba, RebaPose, RebaPoseRequest, TrajectoryFromRebaRequest
 
 class ComfortPoseAS(object):
@@ -26,30 +26,30 @@ class ComfortPoseAS(object):
 
         self.server = SimpleActionServer(self.action_name, RebaHandOverAction, execute_cb=self.execute_cb, auto_start = False)
         self.server.start()
-        self.feedback = RebaHandOverActionFeedback()
-        self.result = RebaHandOverActionResult()
+        self.feedback = RebaHandOverFeedback()
+        self.result = RebaHandOverResult()
         rospy.loginfo('[Comfort Pose AS] Ready to execute comfortable poses!')
 
     def execute_cb(self, goal):
         try:
-            object_pose = self.tfl.lookupTransform(self.world_frame, goal.goal.object, rospy.Time(0))
-            hip_pose = self.tfl.lookupTransform(self.world_frame, '/kinect/human/torso', rospy.Time(0))
+            object_pose = self.tfl.lookupTransform(self.world_frame, goal.object, rospy.Time(0))
+            hip_pose = self.tfl.lookupTransform(self.world_frame, '/kinect/human/waist', rospy.Time(0))
         except tf.LookupException:
-            rospy.logerr('Object {} not found'.format(goal.goal.object))
+            rospy.logerr('Object {} not found'.format(goal.object))
             return self.server.set_aborted()
 
-        self.feedback.status = RebaHandOverFeedback.STATE_COMPUTING_REBA
+        self.feedback.state = RebaHandOverFeedback.STATE_COMPUTING_REBA
         self.server.publish_feedback(self.feedback)
 
         reba_request = RebaPoseRequest()
         reba_request.hip_pose = transformations.list_to_pose(hip_pose).pose
         hand_over_location = self.reba_service(reba_request).hand_over_location
 
-        self.feedback.status = RebaHandOverFeedback.STATE_COMPUTING_TRAJECTORIES
+        self.feedback.state = RebaHandOverFeedback.STATE_COMPUTING_TRAJECTORIES
         self.server.publish_feedback(self.feedback)
 
         traj_request = TrajectoryFromRebaRequest()
-        traj_request.object_location = object_pose
+        traj_request.object_location = transformations.list_to_pose(object_pose).pose
         traj_request.hand_over_location = hand_over_location
         trajectories = self.traj_service(traj_request)
 
@@ -57,7 +57,7 @@ class ComfortPoseAS(object):
         trajectory_to_handover = trajectories.trajectory_to_handover
 
         # Trajectory execution
-        self.feedback.status = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_OBJECT
+        self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_OBJECT
         self.server.publish_feedback(self.feedback)
         grasp_success = self.arm.execute(trajectory_to_object)
 
@@ -65,7 +65,7 @@ class ComfortPoseAS(object):
             rospy.logerr("Grasp failed during execution")
             return self.server.set_aborted()
 
-        self.feedback.status = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_HANDOVER
+        self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_HANDOVER
         self.server.publish_feedback(self.feedback)
         grasp_success = self.arm.execute(trajectory_to_handover)
 
