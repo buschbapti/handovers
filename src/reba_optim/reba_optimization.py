@@ -1,5 +1,6 @@
 import numpy as np
 from sympy.mpmath import *
+from sympy import *
 from .read_model import ReadModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
@@ -29,8 +30,14 @@ class RebaOptimization:
         return joint_values
 
     def safety_cost(self, T):
-        cost = T[:-1,-1].norm() - self.safety_dist
-        return cost*cost
+        cost = 0
+        for i in range(3):
+            p = Float(T[i,-1])
+            if p < self.safety_dist[i][0]:
+                cost += abs(p - self.safety_dist[i][0])
+            elif p > self.safety_dist[i][1]:
+                cost += abs(p - self.safety_dist[i][1])
+        return cost
 
     def cost_function(self, q):
         # first get the active joints
@@ -45,9 +52,6 @@ class RebaOptimization:
         reba_data = self.reba.from_joints_to_reba(q, self.model.joint_names)
         # calculate REBA score
         C_reba = self.reba.reba_optim(reba_data)
-
-        print C_reba
-        
         # return the final score
         return self.cost_factors[0]*C_reba + self.cost_factors[1]*C_safe + self.cost_factors[2]*C_rot
 
