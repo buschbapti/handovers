@@ -2,15 +2,39 @@ from sympy import *
 import rospy
 from kinect_skeleton_publisher.joint_transformations import *
 from sympy import *
+import xmltodict
 
 class ReadModel:
     def __init__(self, model=None):
         # get the lengths of the human
         self.nb_joints = 10
         self.lengths = rospy.get_param('/kinect/human_lengths')
-        self.from_model_to_transformations(model)
+        self.init_joint_names()
+        self.from_model_to_transformations()
 
-    def from_model_to_transformations(self, model):
+    def init_joint_names(self):
+        # create the list of all joints byt appending first spherical joints
+        self.joint_names = []
+        for i in range(3):
+            self.joint_names.append('spine_'+str(i))
+            self.joint_names.append('neck_'+str(i))
+            self.joint_names.append('right_shoulder_'+str(i))
+            self.joint_names.append('left_shoulder_'+str(i))
+            #self.joint_names.append('right_hip_'+str(i))
+            #self.joint_names.append('left_hip_'+str(i))
+        # then append universal joints
+        for i in range(2):
+            self.joint_names.append('right_elbow_'+str(i))
+            self.joint_names.append('left_elbow_'+str(i))
+            self.joint_names.append('right_wrist_'+str(i))
+            self.joint_names.append('left_wrist_'+str(i))
+            #self.joint_names.append('right_ankle_'+str(i))
+            #self.joint_names.append('left_ankle_'+str(i))
+        # finish by the knee joint
+        self.joint_names.append('right_knee')
+        self.joint_names.append('left_knee')
+
+    def from_model_to_transformations(self):
         # for now create a fake model
         self.end_effectors = ['right_hand']
         self.chain = []
@@ -29,8 +53,8 @@ class ReadModel:
         spine0 = translation([0,0,waist])*rotation_x(t[0])
         spine1 = rotation_y(t[1])
         spine2 = rotation_z(t[2])
-        shoulder0 = translation([0,-shoulder_width,shoulder_height])*rotation_z(-pi/2)*rotation_z(t[3])
-        shoulder1 = rotation_y(t[4])
+        shoulder0 = translation([0,-shoulder_width,shoulder_height])*rotation_z(-pi/2)*rotation_y(t[3])
+        shoulder1 = rotation_z(t[4])
         shoulder2 = rotation_x(t[5])
         elbow0 = translation([upper_arm,0,0])*rotation_z(t[6])
         elbow1 = rotation_x(t[7])
@@ -60,5 +84,28 @@ class ReadModel:
         # multiply with the transformation to the end-effector
         T = T*self.chain[-1]
         return T
+                
+    def joint_limits(self):
+        xml_urdf = rospy.get_param('human_description')
+        dict_urdf = xmltodict.parse(xml_urdf)
+        joints_urdf = []
+        joints_urdf.append([j['@name'] for j in dict_urdf['robot']['joint'] if j['@name'] in self.joint_names])
+        joints_urdf.append([[float(j['limit']['@lower']), float(j['limit']['@upper'])] for j in dict_urdf['robot']['joint'] if j['@name'] in self.joint_names])
+        # reorder the joints limits
+        limits = {}
+        limits['joint_names'] = self.joint_names
+        limits['limits'] = [joints_urdf[1][joints_urdf[0].index(name)] for name in self.joint_names]
+        # reorder if limits are inversed
+        for limit in limits['limits']:
+            if limit[1] < limit[0]:
+                temp = limit[0]
+                limit[0] = limit[1]
+                limit[1] = temp
+        return limits
 
+    def get_random_pose(self):
+        # create a random joint state
+        bounds = np.array(self.joint_limits()['limits'])
+        joint_state = np.random.uniform(bounds[:,0], bounds[:,1], len(self.joint_names))
+        return joint_state
 
