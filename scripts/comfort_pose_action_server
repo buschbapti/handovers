@@ -3,18 +3,19 @@
 import rospy
 import tf
 import transformations
+from baxter_commander import ArmCommander
 from actionlib import SimpleActionServer
-from geometry_msgs.msg import Pose
 from reba_optim.msg import RebaHandOverActionGoal, RebaHandOverAction, RebaHandOverActionFeedback, RebaHandOverActionResult, RebaHandOverFeedback
 from reba_optim.srv import TrajectoryFromReba, RebaPose, RebaPoseRequest, TrajectoryFromRebaRequest
 
 class ComfortPoseAS(object):
-    def __init__(self, name):
+    def __init__(self, name, side):
         self.action_name = name
         self.reba_name = '/reba/get_reba'
         self.traj_name = '/reba/trajectory_from_reba'
         self.world_frame = '/vrep_frame'
         self.tfl = tf.TransformListener()
+        self.arm = ArmCommander(side)
 
         for srv in [self.reba_name, self.traj_name]:
             rospy.loginfo('[Comfort Pose AS] Waiting for {}...'.format(srv))
@@ -37,11 +38,14 @@ class ComfortPoseAS(object):
             rospy.logerr('Object {} not found'.format(goal.object))
             return self.server.set_aborted()
 
+        self.feedback.status = RebaHandOverFeedback.STATE_COMPUTING_REBA
+        self.server.publish_feedback(self.feedback)
+
         reba_request = RebaPoseRequest()
         reba_request.hip_pose = transformations.list_to_pose(hip_pose).pose
         hand_over_location = self.reba_service(reba_request).hand_over_location
 
-        self.feedback.status = RebaHandOverFeedback.STATE_REBA_COMPUTED
+        self.feedback.status = RebaHandOverFeedback.STATE_COMPUTING_TRAJECTORIES
         self.server.publish_feedback(self.feedback)
 
         traj_request = TrajectoryFromRebaRequest()
@@ -49,18 +53,30 @@ class ComfortPoseAS(object):
         traj_request.hand_over_location = hand_over_location
         trajectories = self.traj_service(traj_request)
 
-        self.feedback.status = RebaHandOverFeedback.STATE_TRAJECTORIES_COMPUTED
-        self.server.publish_feedback(self.feedback)
-
         trajectory_to_object = trajectories.trajectory_to_object
         trajectory_to_handover = trajectories.trajectory_to_handover
 
-        # TODO Execute
+        # Trajectory execution
+        self.feedback.status = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_OBJECT
+        self.server.publish_feedback(self.feedback)
+        grasp_success = self.arm.execute(trajectory_to_object)
 
-        rospy.loginfo('Succeeded')
+        if not grasp_success:
+            rospy.logerr("Grasp failed during execution")
+            return self.server.set_aborted()
+
+        self.feedback.status = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_HANDOVER
+        self.server.publish_feedback(self.feedback)
+        grasp_success = self.arm.execute(trajectory_to_handover)
+
+        if not grasp_success:
+            rospy.logerr("Handover failed during execution")
+            return self.server.set_aborted()
+
+        rospy.loginfo('Handover succeeded')
         self.server.set_succeeded(self.result)
 
 if __name__ == '__main__':
-  rospy.init_node('comfort_pose_action_server')
-  ComfortPoseAS('/reba/comfort_pose_action_server')
-  rospy.spin()
+    rospy.init_node('comfort_pose_action_server')
+    ComfortPoseAS('/reba/comfort_pose_action_server', 'right')
+    rospy.spin()
