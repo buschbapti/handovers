@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+import rospy
+from reba_optim.srv import RebaPose, RebaPoseResponse
+from reba_optim.reba_optimization import RebaOptimization
+from copy import copy
+import numpy as np
+import tf
+from sympy import eye
+import rospkg
+import yaml
+
+if __name__ == "__main__":
+    rospy.init_node('reba_calibrator')
+    rospack = rospkg.RosPack()
+    distance = [[0.5,1.],[-10.,10.],[-10,10]]
+    optim = RebaOptimization(eye(3), distance, sum_optim=True, save_score=False, cost_factors=[1,5,0])
+    rospy.loginfo('Calibrating the hand-over location.')
+    # generate a random pose to start the optimization
+    joints = optim.model.get_random_pose().tolist()
+    # optimize the hand-over location with the specified parameters
+    res = optim.optimize_posture(joints)
+    opt_joints = res.x.tolist()
+    # first get the active joints
+    active = optim.get_active_joints_value(opt_joints)
+    # calculate the forward kinematic
+    HipTHand = optim.model.forward_kinematic(active)
+    # convert from transformation matrix to tf
+    T = np.array(np.array(HipTHand), np.float)
+    trans = tf.transformations.translation_from_matrix(T).tolist()
+    quat = tf.transformations.quaternion_from_matrix(T).tolist()
+    tf_hip = (trans,quat)
+    # set it on the parameter server
+    rospy.set_param("/reba/hand_over_location", tf_hip)
+    # dump it in a file
+    with open(rospack.get_path("reba_optim")+"/config/hand_over_location.yaml", 'w') as f:
+        yaml.dump(tf_hip, f)
+    rospy.loginfo('Hand-over location calculated and set on the parameter server.')
