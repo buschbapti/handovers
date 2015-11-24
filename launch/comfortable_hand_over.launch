@@ -3,10 +3,11 @@
   	<arg name="port" default="3883" /> <!-- Port of the VRPN server (default 3883) -->
   	<arg name="opt_port" default="3884" /> <!-- Port of the VRPN server (default 3883) -->
 
-	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" output="screen"/>
-	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher.py" output="screen"/>
+	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" output="screen" required="true"/>
+	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher.py" output="screen" required="true"/>
+	<node name="hip_publisher" pkg="kinect_skeleton_publisher" type="hip_publisher.py" output="screen" required="true"/>
 	
-	<node name="matlab_bridge" pkg="reba_optim" type="matlab_bridge" output="screen"/>
+	<node name="matlab_bridge" pkg="reba_optim" type="matlab_bridge" output="screen" required="true"/>
 	<include file="$(find reba_optim)/launch/reba_server.launch"/>
 	<include file="$(find baxter_commander)/launch/commander.launch"/>
 

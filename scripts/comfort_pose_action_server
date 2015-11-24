@@ -33,9 +33,9 @@ class ComfortPoseAS(object):
     def execute_cb(self, goal):
         try:
             object_pose = self.tfl.lookupTransform(self.world_frame, goal.object, rospy.Time(0))
-            hip_pose = self.tfl.lookupTransform(self.world_frame, '/kinect/human/waist', rospy.Time(0))
-        except tf.LookupException:
-            rospy.logerr('Object {} not found'.format(goal.object))
+            hip_pose = self.tfl.lookupTransform(self.world_frame, '/human/hip', rospy.Time(0))
+        except tf.LookupException, e:
+            rospy.logerr(e.message)
             return self.server.set_aborted()
 
         self.feedback.state = RebaHandOverFeedback.STATE_COMPUTING_REBA
