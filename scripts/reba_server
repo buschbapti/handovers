@@ -13,7 +13,7 @@ class RebaServer:
 
     def cb_reba_request_received(self, reba_pose_req):
         # read tf from VREP to hip
-        tf_hip = reba_pose_req.hip_pose
+        tf_hip = transformations.pose_to_list(reba_pose_req.hip_pose)
         # read transformation from hip to handover location from parameter server
         tf_hand = rospy.get_param('/reba/hand_over_location')
         # multiply the two tf
