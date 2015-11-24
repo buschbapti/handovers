@@ -3,6 +3,8 @@
 import rospy
 import tf
 import transformations
+from rospkg import RosPack
+from scipy.io import loadmat
 from baxter_commander import ArmCommander
 from actionlib import SimpleActionServer
 from reba_optim.msg import RebaHandOverAction, RebaHandOverResult, RebaHandOverFeedback
@@ -16,6 +18,7 @@ class ComfortPoseAS(object):
         self.world_frame = '/vrep_frame'
         self.tfl = tf.TransformListener()
         self.arm = ArmCommander(side)
+        self.rospack = RosPack()
 
         for srv in [self.reba_name, self.traj_name]:
             rospy.loginfo('[Comfort Pose AS] Waiting for {}...'.format(srv))
@@ -28,7 +31,18 @@ class ComfortPoseAS(object):
         self.server.start()
         self.feedback = RebaHandOverFeedback()
         self.result = RebaHandOverResult()
+
+        with open(self.rospack.get_path("reba_optim")+"/config/baxterRest.mat") as f:
+            home_pose_mat = loadmat(f)
+
+        self.home_pose = self.arm.get_current_state()
+        self.home_pose.joint_state.position = home_pose_mat['qRest'][0]
+
+        self.go_to_home_pose()
         rospy.loginfo('[Comfort Pose AS] Ready to execute comfortable poses!')
+
+    def go_to_home_pose(self):
+        self.arm.move_to_controlled(self.home_pose)
 
     def execute_cb(self, goal):
         try:
