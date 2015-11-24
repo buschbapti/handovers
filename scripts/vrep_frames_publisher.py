@@ -16,7 +16,7 @@ class VREPFramesPublisher():
 
         with open(self.rospack.get_path("reba_optim")+"/config/calibration_matrix_vrep.yaml") as f:
             self.calibration_matrix_vrep = yaml.load(f)
-            self.calibration_matrix_vrep = transformations.inverse_transform(self.calibration_matrix_vrep)
+            #self.calibration_matrix_vrep = transformations.inverse_transform(self.calibration_matrix_vrep)
 
         with open(self.rospack.get_path("reba_optim")+"/config/calibration_matrix_tip.yaml") as f:
             self.calibration_matrix_tip = yaml.load(f)
