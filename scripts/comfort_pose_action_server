@@ -45,6 +45,8 @@ class ComfortPoseAS(object):
         self.arm.move_to_controlled(self.home_pose)
 
     def execute_cb(self, goal):
+        self.go_to_home_pose()
+        rospy.sleep(1)
         try:
             object_pose = self.tfl.lookupTransform(self.world_frame, goal.object, rospy.Time(0))
             hip_pose = self.tfl.lookupTransform(self.world_frame, '/human/hip', rospy.Time(0))
@@ -74,6 +76,8 @@ class ComfortPoseAS(object):
         self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_OBJECT
         self.server.publish_feedback(self.feedback)
         grasp_success = self.arm.execute(trajectory_to_object)
+
+        rospy.sleep(10)
 
         if not grasp_success:
             rospy.logerr("Grasp failed during execution")

@@ -40,7 +40,7 @@ paramGeneral.checkFinalSolution = 1; % this will stop the simulation and run
                                      % the FK on the smoothed final solution
                                      
 paramGeneral.dmpExtendTimeFactor = 1.1;    
-storePath = '../ros_matlab_bridge/src/robcom/data';
+storePath = '/tmp/matlab_bridge/';
 soundPlayer = preloadSound_Baxter;
 
 
@@ -65,7 +65,7 @@ robot.requestStreaming; % this is important!
 
 % Update Baxter rest posture
 % ============================
-load('baxterRest.mat');
+load('../../config/baxterRest.mat');
 robot.qRestPosture = qRest; % robot.setJointAngles( qRest );
 robot.TrestPosture = restT; 
 robot.backToRestPosture();
@@ -104,7 +104,7 @@ while 1 % main loop keeps running non-stop
     %  Put the scene back to its original configuration
     % ==========================================
     default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
-    load('baxterRest.mat'); robot.qRestPosture = qRest;  robot.TrestPosture = restT;  robot.backToRestPosture();    
+    load('../../config/baxterRest.mat'); robot.qRestPosture = qRest;  robot.TrestPosture = restT;  robot.backToRestPosture();    
     
     if run_without_ROS_trigger == 1 % skip the ROS part and generate poses randomly
      

@@ -2,11 +2,11 @@
 import rospy
 import os.path
 from reba_optim.srv import TrajectoryFromReba, TrajectoryFromRebaResponse
-from trajectory_msgs.msg import JointTrajectory
+from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
 import transformations
 
 class MatlabBridge:
-    def __init__(self, matlab_flag='matlab_flag.txt', ros_flag='ros_flag.txt', shared_folder='/tmp/matlab_bridge/'):
+    def __init__(self, matlab_flag='flagMatlabFinished.txt', ros_flag='flagRosFinished.txt', shared_folder='/tmp/matlab_bridge/'):
         # create share_folder if necessary
         if not os.path.exists(shared_folder):
             os.makedirs(shared_folder)
@@ -14,6 +14,9 @@ class MatlabBridge:
         self.shared_folder = shared_folder
         self.matlab_flag = shared_folder + matlab_flag
         self.ros_flag = shared_folder + ros_flag
+        # define trajectories files
+        self.traj1_file = shared_folder + 'traj1.txt'
+        self.traj2_file = shared_folder + 'traj2.txt'
         self.rate = rospy.Rate(10)
 
     def is_matlab_flag_set(self):
@@ -30,21 +33,44 @@ class MatlabBridge:
         # loop until the flag is set
         while not rospy.is_shutdown() and not self.is_matlab_flag_set():
             self.rate.sleep()
+        rospy.loginfo('Matlab flag on, reading trajectories.')
         # unset the flag
         self.unset_matlab_flag()
+
+    def remove_trajectory_files(self):
+        os.remove(self.traj1_file)
+        os.remove(self.traj2_file)
 
     def write_poses_in_file(self, handOverLocation, viaPointLocation=None):
         # TODO write file
         # set the ros flag
         self.set_ros_flag()
 
-    def read_trajectory_file(self):
-        trajectory = JointTrajectory()
+    def read_trajectory_files(self):
+        rospy.loginfo('Reading trajectory.')
+
+        def read_one_file(filename):
+            trajectory = JointTrajectory()
+            with open(filename) as f:
+                for line in f:
+                    point = JointTrajectoryPoint()
+                    for field_num, field in enumerate(line.split('\t')):
+                        if field_num==0:
+                            point.time_from_start = rospy.Duration(float(field))
+                        elif field!='\n':
+                            point.positions.append(float(field))
+                    trajectory.points.append(point)
+            return trajectory
+        
         # wait for matlab flag
         self.wait_for_matlab_flag()
-        rospy.loginfo('Reading trajectory.')
-        # TODO read trajectory file
-        return trajectory 
+        traj1 = read_one_file(self.traj1_file)
+        traj2 = read_one_file(self.traj2_file)
+
+        rospy.loginfo('Finished reading trajectory.')
+        # remove the files
+        self.remove_trajectory_files()
+        return traj1, traj2  
 
     def handle_trajectory_from_reba(self, req):
         rospy.loginfo('Received new trajectory query.')
@@ -53,10 +79,11 @@ class MatlabBridge:
         # query the bridge for the trajectory
         self.write_poses_in_file(handOverLocation)
         # wait for the response
-        trajectory = self.read_trajectory_file()
+        traj1, traj2 = self.read_trajectory_files()
         # return the calculated trajectory
         rospy.loginfo('Sending trajectory.')
-        return TrajectoryFromRebaResponse(trajectory)
+        return TrajectoryFromRebaResponse(trajectory_to_object=traj1,
+                                          trajectory_to_handover=traj2)
 
     def run(self):
         # intialize ros srv
