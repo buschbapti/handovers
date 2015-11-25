@@ -18,6 +18,8 @@ class MatlabBridge:
         self.traj1_file = shared_folder + 'traj1.txt'
         self.traj2_file = shared_folder + 'traj2.txt'
         self.rate = rospy.Rate(10)
+        self.robot_joint_names = ['right_s0', 'right_s1', 'right_e0', 'right_e1',
+                                'right_w0', 'right_w1', 'right_w2']
 
     def is_matlab_flag_set(self):
         return os.path.isfile(self.matlab_flag)
@@ -51,6 +53,7 @@ class MatlabBridge:
 
         def read_one_file(filename):
             trajectory = JointTrajectory()
+            trajectory.joint_names = self.robot_joint_names
             with open(filename) as f:
                 for line in f:
                     point = JointTrajectoryPoint()
