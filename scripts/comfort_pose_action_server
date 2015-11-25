@@ -77,8 +77,6 @@ class ComfortPoseAS(object):
         self.server.publish_feedback(self.feedback)
         grasp_success = self.arm.execute(trajectory_to_object)
 
-        rospy.sleep(10)
-
         if not grasp_success:
             rospy.logerr("Grasp failed during execution")
             return self.server.set_aborted()
