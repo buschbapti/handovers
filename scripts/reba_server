@@ -18,6 +18,9 @@ class RebaServer:
         tf_hand = rospy.get_param('/reba/hand_over_location')
         # multiply the two tf
         tf_hand_over = transformations.multiply_transform(tf_hip, tf_hand)
+        # transform it into vrep format
+        tf_vrep = ([0.,0.,0.],[0.,0.70710678,0.,0.70710678])
+        tf_hand_over = transformations.multiply_transform(tf_hand_over, tf_vrep)
         # create the Pose response
         pose = transformations.list_to_pose(tf_hand_over).pose
         return RebaPoseResponse(hand_over_location=pose)
