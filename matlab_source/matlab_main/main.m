@@ -30,7 +30,7 @@ drawnow;
 
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flab is zero, then you should run the real code.
-run_without_ROS_trigger = 1;
+run_without_ROS_trigger = 0;
 
 paramGeneral.tFinal    = [10 10]; % the time of each part
 paramGeneral.nTraj     = 150;   % number of steps in each trajectory

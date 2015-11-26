@@ -6,7 +6,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
 import transformations
 
 class MatlabBridge:
-    def __init__(self, matlab_flag='flagMatlabFinished.txt', ros_flag='flagRosFinished.txt', shared_folder='/tmp/matlab_bridge/'):
+    def __init__(self, matlab_flag='flagMatlabFinished.txt', ros_flag='flagROSfinished.txt', shared_folder='/tmp/matlab_bridge/'):
         # create share_folder if necessary
         if not os.path.exists(shared_folder):
             os.makedirs(shared_folder)
@@ -17,6 +17,8 @@ class MatlabBridge:
         # define trajectories files
         self.traj1_file = shared_folder + 'traj1.txt'
         self.traj2_file = shared_folder + 'traj2.txt'
+        # define poses files
+        self.poses_file = shared_folder + 'posesFromROS.txt'
         self.rate = rospy.Rate(10)
         self.robot_joint_names = ['right_s0', 'right_s1', 'right_e0', 'right_e1',
                                 'right_w0', 'right_w1', 'right_w2']
@@ -44,7 +46,24 @@ class MatlabBridge:
         os.remove(self.traj2_file)
 
     def write_poses_in_file(self, handOverLocation, viaPointLocation=None):
-        # TODO write file
+        def convert_to_string(pose):
+            # create the string of the pose to write in the textfile
+            pose_str = ''
+            for lists in pose:
+                for value in lists:
+                    pose_str += str(value) + '\t' 
+            pose_str += '\n'
+            return pose_str
+        # if no viapoint is given write a default
+        if viaPointLocation is None:
+            viaPointLocation = ([-999,-999,-999],[-999,-999,-999,-999])
+        # create string for viapoint
+        string_poses = convert_to_string(viaPointLocation)
+        # create the string for handover
+        string_poses += convert_to_string(handOverLocation)
+        # write the string to the file
+        with open(self.poses_file, 'w') as f:
+            f.write(string_poses)
         # set the ros flag
         self.set_ros_flag()
 
