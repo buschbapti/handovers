@@ -73,12 +73,13 @@ class MatlabBridge:
         def read_one_file(filename):
             trajectory = JointTrajectory()
             trajectory.joint_names = self.robot_joint_names
+            delta_safety = 0.05 
             with open(filename) as f:
                 for line in f:
                     point = JointTrajectoryPoint()
                     for field_num, field in enumerate(line.split('\t')):
                         if field_num==0:
-                            point.time_from_start = rospy.Duration(float(field))
+                            point.time_from_start = rospy.Duration(float(field)+delta_safety)
                         elif field!='\n':
                             point.positions.append(float(field))
                     trajectory.points.append(point)
@@ -98,8 +99,9 @@ class MatlabBridge:
         rospy.loginfo('Received new trajectory query.')
         # get the requested pose
         handOverLocation = transformations.pose_to_list(req.hand_over_location)
+        objectLocation = transformations.pose_to_list(req.object_location)
         # query the bridge for the trajectory
-        self.write_poses_in_file(handOverLocation)
+        self.write_poses_in_file(handOverLocation, objectLocation)
         # wait for the response
         traj1, traj2 = self.read_trajectory_files()
         # return the calculated trajectory
