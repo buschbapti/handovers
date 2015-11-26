@@ -9,9 +9,10 @@ from baxter_commander import ArmCommander
 from actionlib import SimpleActionServer
 from reba_optim.msg import RebaHandOverAction, RebaHandOverResult, RebaHandOverFeedback
 from reba_optim.srv import TrajectoryFromReba, RebaPose, RebaPoseRequest, TrajectoryFromRebaRequest
+import sys
 
 class ComfortPoseAS(object):
-    def __init__(self, name, side):
+    def __init__(self, name, side, display_only=False):
         self.action_name = name
         self.reba_name = '/reba/get_reba'
         self.traj_name = '/reba/trajectory_from_reba'
@@ -19,6 +20,7 @@ class ComfortPoseAS(object):
         self.tfl = tf.TransformListener()
         self.arm = ArmCommander(side)
         self.rospack = RosPack()
+        self.display_only = display_only
 
         for srv in [self.reba_name, self.traj_name]:
             rospy.loginfo('[Comfort Pose AS] Waiting for {}...'.format(srv))
@@ -75,7 +77,12 @@ class ComfortPoseAS(object):
         # Trajectory execution
         self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_OBJECT
         self.server.publish_feedback(self.feedback)
-        grasp_success = self.arm.execute(trajectory_to_object)
+        if self.display_only:
+            self.arm.display(trajectory_to_object)
+            grasp_success = True
+            rospy.sleep(10)
+        else:
+            grasp_success = self.arm.execute(trajectory_to_object)
 
         if not grasp_success:
             rospy.logerr("Grasp failed during execution")
@@ -83,7 +90,12 @@ class ComfortPoseAS(object):
 
         self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_HANDOVER
         self.server.publish_feedback(self.feedback)
-        grasp_success = self.arm.execute(trajectory_to_handover)
+        if self.display_only:
+            self.arm.display(trajectory_to_handover)
+            grasp_success = True
+            rospy.sleep(10)
+        else:
+            grasp_success = self.arm.execute(trajectory_to_handover)
 
         if not grasp_success:
             rospy.logerr("Handover failed during execution")
@@ -94,5 +106,5 @@ class ComfortPoseAS(object):
 
 if __name__ == '__main__':
     rospy.init_node('comfort_pose_action_server')
-    ComfortPoseAS('/reba/comfort_pose_action_server', 'right')
+    ComfortPoseAS('/reba/comfort_pose_action_server', 'right', (sys.argv[1]==True))
     rospy.spin()

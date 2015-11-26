@@ -2,8 +2,9 @@
 	<arg name="ip" /> <!-- IP of the VRPN server (like Motive or Arena) -->
   	<arg name="port" default="3883" /> <!-- Port of the VRPN server (default 3883) -->
   	<arg name="opt_port" default="3884" /> <!-- Port of the VRPN server (default 3883) -->
+  	<arg name="display_only" default="False" />
 
-	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" output="screen" required="true"/>
+	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" args="$(arg display_only)" output="screen" required="true"/>
 	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher.py" output="screen" required="true"/>
 	<node name="hip_publisher" pkg="kinect_skeleton_publisher" type="hip_publisher.py" output="screen" required="true"/>
 	
