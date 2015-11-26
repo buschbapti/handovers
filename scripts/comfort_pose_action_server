@@ -2,6 +2,7 @@
 
 import rospy
 import tf
+import json
 import transformations
 from rospkg import RosPack
 from scipy.io import loadmat
@@ -18,7 +19,9 @@ class ComfortPoseAS(object):
         self.traj_name = '/reba/trajectory_from_reba'
         self.world_frame = '/vrep_frame'
         self.tfl = tf.TransformListener()
+        self.tfb = tf.TransformBroadcaster()
         self.arm = ArmCommander(side)
+        self.side = side
         self.rospack = RosPack()
         self.display_only = display_only
 
@@ -37,6 +40,9 @@ class ComfortPoseAS(object):
         with open(self.rospack.get_path("reba_optim")+"/config/baxterRest.mat") as f:
             home_pose_mat = loadmat(f)
 
+        with open(self.rospack.get_path("reba_optim")+"/config/poses.json") as f:
+            self.poses = json.load(f)
+
         self.home_pose = self.arm.get_current_state()
         self.home_pose.joint_state.position = home_pose_mat['qRest'][0]
 
@@ -46,15 +52,24 @@ class ComfortPoseAS(object):
     def go_to_home_pose(self):
         self.arm.move_to_controlled(self.home_pose)
 
+    def get_grasp_pose(self, object):
+        obj_T_gripper = transformations.inverse_transform(self.poses[object])
+        vrep_T_obj = self.tfl.lookupTransform(self.world_frame, object, rospy.Time(0))
+        gripper_T_vrep_tip = self.tfl.lookupTransform(self.side+"_gripper", 'vrep_tip', rospy.Time(0))
+        vrep_T_gripper = transformations.multiply_transform(vrep_T_obj, obj_T_gripper)
+        vrep_T_vrep_tip = transformations.multiply_transform(vrep_T_gripper, gripper_T_vrep_tip)
+        return vrep_T_vrep_tip
+
     def execute_cb(self, goal):
         self.go_to_home_pose()
         rospy.sleep(1)
         try:
-            object_pose = self.tfl.lookupTransform(self.world_frame, goal.object, rospy.Time(0))
+            object_pose = self.get_grasp_pose(goal.object)
             hip_pose = self.tfl.lookupTransform(self.world_frame, '/human/hip', rospy.Time(0))
         except tf.LookupException, e:
             rospy.logerr(e.message)
             return self.server.set_aborted()
+
 
         self.feedback.state = RebaHandOverFeedback.STATE_COMPUTING_REBA
         self.server.publish_feedback(self.feedback)
