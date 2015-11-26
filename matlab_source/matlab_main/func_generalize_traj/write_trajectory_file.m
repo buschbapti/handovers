@@ -1,11 +1,13 @@
-function [] = write_trajectory_file(storePath, traj1_, traj2_, nTraj)
+function [] = write_trajectory_file(storePath, traj1_, traj2_, nTraj, initDT)
 
-    t1Desired = linspace(0,traj1_(end,1), nTraj);
+    t1Desired = linspace(0, traj1_(end,1), nTraj);
     desiredQ = resample(traj1_(:,1), t1Desired, traj1_(:,2:end));
+    t1Desired = t1Desired + initDT;    
     traj1 = [t1Desired' desiredQ];
     
     t2Desired = linspace(0,traj2_(end,1), nTraj);
-    desiredQ = resample(traj2_(:,1), t2Desired, traj2_(:,2:end));
+    desiredQ  = resample(traj2_(:,1), t2Desired, traj2_(:,2:end));
+    t2Desired = t2Desired + initDT;
     traj2 = [t2Desired' desiredQ];
     
     if 0

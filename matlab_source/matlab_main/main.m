@@ -29,18 +29,23 @@ add_required_paths();
 drawnow;
 
 % If this flag is 1 no ROS node is required and poses are generated
-% randomly. If the flab is zero, then you should run the real code.
-run_without_ROS_trigger = 0;
+% randomly. If the flag is zero, it will wait for a real pose in 
+% posesFromROS.txt and for the flag  flagROSfinished.txt
+run_without_ROS_trigger = 1;
 
-paramGeneral.tFinal    = [10 10]; % the time of each part
+paramGeneral.initialDT = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
+paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
+paramGeneral.tFinal    = [10 10]; % duration of each part of the trajectory
 paramGeneral.nTraj     = 150;   % number of steps in each trajectory
+
+
 
 paramGeneral.debugMode = 0;
 paramGeneral.checkFinalSolution = 1; % this will stop the simulation and run 
                                      % the FK on the smoothed final solution
                                      
 paramGeneral.dmpExtendTimeFactor = 1.1;    
-storePath = '/tmp/matlab_bridge/';
+storePath = './tmp/matlab_bridge/';
 soundPlayer = preloadSound_Baxter;
 
 
@@ -108,7 +113,7 @@ while 1 % main loop keeps running non-stop
     
     if run_without_ROS_trigger == 1 % skip the ROS part and generate poses randomly
      
-        if 1 % random generator
+        if 0 % random generator
             scale = 0.85;
             placeHolderParam.viaPoint.stdPos = scale*[0.6 0.6  1];    % meters
             placeHolderParam.viaPoint.stdRot = scale*d2r([45  45  180]); % radians world coordinates
@@ -116,7 +121,7 @@ while 1 % main loop keeps running non-stop
             placeHolderParam.handOver.stdRot = scale*d2r([ 45  45  45]);
             placeHolderParam.deterministic   = 0; % make sure the shift is exact. Otherwise use it as std noise.
         end
-        if 0 % deterministic placement
+        if 1 % deterministic placement
             scale = 1;
             placeHolderParam.viaPoint.stdPos = scale*[-0.3  0.5   -0.1];    % meters
             placeHolderParam.viaPoint.stdRot = scale*d2r([0  0 +60]); % radians world coordinates
@@ -162,7 +167,7 @@ while 1 % main loop keeps running non-stop
                                           d_handover, humanA, paramGeneral,...
                                           lookupTraj1, lookupTraj2, soundPlayer);
     
-    write_trajectory_file(storePath, traj1, traj2, paramGeneral.nTraj);
+    write_trajectory_file(storePath, traj1, traj2, paramGeneral.nTraj, paramGeneral.initialDT);
     fprintf('Trajectory generated and sent to ROS!!\n\n\n');
 
     
@@ -172,8 +177,7 @@ while 1 % main loop keeps running non-stop
     pause(pauseTime);
 
     mctr=mctr+1;
-    close all;
-    
+    close all;   
  
     
 end

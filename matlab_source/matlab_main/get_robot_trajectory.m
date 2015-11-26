@@ -60,7 +60,8 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             % add grasping approach. 
             T_appr2.T = rebaHand.T;
             T_appr2.T = T_appr2.T*my_trotx(pi); % mirror
-            T_appr2.T = move_XYZ_on_intrinsic_frame(T_appr2.T, [0 0 -0.2]');
+            
+            T_appr2.T = move_XYZ_on_intrinsic_frame(T_appr2.T, [0 0 -paramGeneral.offsetGripper_humanHand]');
             d_viaPoint.sendTargetCartesianCoordinates(T_appr2.T(1:3,4), tr2rpy(T_appr2.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);
 
             traj2dmpConnect = connect_with_DMP_wrapper(robot, [], T_appr1.T, T_appr2.T, traj2initGuess.sol.q);
@@ -127,7 +128,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             for k=1:numel(traj2.q(:,1))
                 robot.setJointAngles(traj2.q(k,:),1);
             end  
-            pause(3);
+            %pause(3);
             %robot.simStart;
             
         end
