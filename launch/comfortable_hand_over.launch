@@ -5,7 +5,7 @@
   	<arg name="display_only" default="False" />
 
 	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" args="$(arg display_only)" output="screen" required="true"/>
-	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher.py" output="screen" required="true"/>
+	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher" output="screen" required="true"/>
 	<node name="hip_publisher" pkg="kinect_skeleton_publisher" type="hip_publisher.py" output="screen" required="true"/>
 	
 	<node name="matlab_bridge" pkg="reba_optim" type="matlab_bridge" output="screen" required="true"/>
