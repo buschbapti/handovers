@@ -73,13 +73,12 @@ class MatlabBridge:
         def read_one_file(filename):
             trajectory = JointTrajectory()
             trajectory.joint_names = self.robot_joint_names
-            delta_safety = 0.05 
             with open(filename) as f:
                 for line in f:
                     point = JointTrajectoryPoint()
                     for field_num, field in enumerate(line.split('\t')):
                         if field_num==0:
-                            point.time_from_start = rospy.Duration(float(field)+delta_safety)
+                            point.time_from_start = rospy.Duration(float(field))
                         elif field!='\n':
                             point.positions.append(float(field))
                     trajectory.points.append(point)
