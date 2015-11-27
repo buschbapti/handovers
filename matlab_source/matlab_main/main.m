@@ -45,9 +45,15 @@ paramGeneral.checkFinalSolution = 1; % this will stop the simulation and run
                                      % the FK on the smoothed final solution
                                      
 paramGeneral.dmpExtendTimeFactor = 1.1;    
-storePath = './tmp/matlab_bridge/';
+storePath = '/tmp/matlab_bridge/';
 soundPlayer = preloadSound_Baxter;
 
+% create the folder for file exchange
+[s,mess,messid] = mkdir(storePath);
+% if the folder already exist clear its content
+if messid == 'MATLAB:MKDIR:DirectoryExists'
+    delete([storePath,'*'])
+end
 
 %% Initialize VREP and lookup table
 

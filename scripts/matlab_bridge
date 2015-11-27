@@ -10,15 +10,24 @@ class MatlabBridge:
         # create share_folder if necessary
         if not os.path.exists(shared_folder):
             os.makedirs(shared_folder)
+        else:
+            # delete the content of the folder
+            for the_file in os.listdir(shared_folder):
+                file_path = os.path.join(folder, the_file)
+                try:
+                    if os.path.isfile(file_path):
+                        os.unlink(file_path)
+                except Exception, e:
+                    print e 
         # set the flag path
         self.shared_folder = shared_folder
-        self.matlab_flag = shared_folder + matlab_flag
-        self.ros_flag = shared_folder + ros_flag
+        self.matlab_flag = os.path.join(shared_folder,matlab_flag)
+        self.ros_flag = os.path.join(shared_folder,ros_flag)
         # define trajectories files
-        self.traj1_file = shared_folder + 'traj1.txt'
-        self.traj2_file = shared_folder + 'traj2.txt'
+        self.traj1_file = os.path.join(shared_folder,'traj1.txt')
+        self.traj2_file = os.path.join(shared_folder,'traj2.txt')
         # define poses files
-        self.poses_file = shared_folder + 'posesFromROS.txt'
+        self.poses_file = os.path.join(shared_folder,'posesFromROS.txt')
         self.rate = rospy.Rate(10)
         self.robot_joint_names = ['right_s0', 'right_s1', 'right_e0', 'right_e1',
                                 'right_w0', 'right_w1', 'right_w2']
