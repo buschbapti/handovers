@@ -1,4 +1,5 @@
 /notebooks/.ipynb_checkpoints/*
+/matlab_source/matlab_main/currentViaPointSolution.mat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
