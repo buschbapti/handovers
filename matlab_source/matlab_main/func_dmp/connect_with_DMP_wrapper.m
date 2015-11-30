@@ -1,6 +1,13 @@
-function [trajDMP] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend, trajRawJoint, dmpExtendTimeFactor)
+function [trajDMP] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend, paramFilterJoint, trajRawJoint, dmpExtendTimeFactor)
 % [trajdmpApproach] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend)
 % use DMPS to force start and goal states
+%
+%
+%
+% INPUT
+%   paramFilterJoint.active: 1 or 0. If active, lowpass filter the joint to avoid unexpected jumps of DMP
+%   paramFilterJointplotDebug: optional field. 1 or 0. Check the result of smoothing
+
     
     % 
     if exist('trajRawJoint', 'var')
@@ -34,15 +41,15 @@ function [trajDMP] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend, tra
     
     % Do the DMP
     if exist('dmpExtendTimeFactor', 'var')
-        trajDMP = connect_with_DMP(robot, qStart, qEnd, qTraj, dmpExtendTimeFactor );
+        trajDMP = connect_with_DMP(robot, qStart, qEnd, qTraj, paramFilterJoint, dmpExtendTimeFactor );
     else
-        trajDMP = connect_with_DMP(robot, qStart, qEnd, qTraj);
+        trajDMP = connect_with_DMP(robot, qStart, qEnd, qTraj, paramFilterJoint);
     end
     
     
 end
 
-function solutionRobotFinal2 = connect_with_DMP(robot, qIdealStart, qIdealFinal, qOld, dmpExtendTimeFactor )
+function solutionRobotFinal2 = connect_with_DMP(robot, qIdealStart, qIdealFinal, qOld, paramFilterJoint, dmpExtendTimeFactor)
 % 
 % solutionRobotFinal = 
 % 
@@ -52,8 +59,15 @@ function solutionRobotFinal2 = connect_with_DMP(robot, qIdealStart, qIdealFinal,
 %           eps: [0 0 0]
 %     theta_eps: [3x1 double]
 
-
-       
+    % Smooth the DMP in joint space
+    if paramFilterJoint.active
+        paramFilter.filterOrder = 3; 
+        paramFilter.filterFreq = 0.1;
+        if ~isfield(paramFilterJoint, 'plotDebug')
+            paramFilterJoint.plotDebug=0;
+        end
+    end
+        
     % Connect gaps with DMP
     % Do an independent joint treatment    
     
@@ -62,7 +76,7 @@ function solutionRobotFinal2 = connect_with_DMP(robot, qIdealStart, qIdealFinal,
     else
         param.timeFactorForSteadyState = 1.5;
     end
-    param.alphaBetaFactor          = 4; % smaller values gives less damping
+    param.alphaBetaFactor          = 4; % smaller values gives less damping 4 but 6 maybe good
     param.debugFigures = [0 0];
     
     param.nTraj = 300;
@@ -71,6 +85,17 @@ function solutionRobotFinal2 = connect_with_DMP(robot, qIdealStart, qIdealFinal,
         
         trajIn = qOld(:,j)';
         
+        if paramFilterJoint.active
+            if paramFilterJoint.plotDebug
+                figurew(['smooth joint ' num2str(j)] );
+                plot(trajIn, 'bo-');
+            end
+            trajIn = smooth_by_filtering( trajIn' , paramFilter, 0)';
+            if paramFilterJoint.plotDebug
+                plot(trajIn, 'ro-');
+            end
+        end
+    
         if ~isempty(qIdealStart)
             param.xi = qIdealStart(j);
         else
