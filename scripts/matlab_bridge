@@ -4,6 +4,7 @@ import os.path
 from reba_optim.srv import TrajectoryFromReba, TrajectoryFromRebaResponse
 from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
 import transformations
+import glob
 
 class MatlabBridge:
     def __init__(self, matlab_flag='flagMatlabFinished.txt', ros_flag='flagROSfinished.txt', shared_folder='/tmp/matlab_bridge/'):
@@ -28,6 +29,10 @@ class MatlabBridge:
         self.traj2_file = os.path.join(shared_folder,'traj2.txt')
         # define poses files
         self.poses_file = os.path.join(shared_folder,'posesFromROS.txt')
+        # define save folder
+        self.save_folder = '/tmp/reba_save/'
+        if not os.path.exists(self.save_folder):
+        	os.makedirs(self.save_folder)
         self.rate = rospy.Rate(10)
         self.robot_joint_names = ['right_s0', 'right_s1', 'right_e0', 'right_e1',
                                 'right_w0', 'right_w1', 'right_w2']
@@ -73,6 +78,11 @@ class MatlabBridge:
         # write the string to the file
         with open(self.poses_file, 'w') as f:
             f.write(string_poses)
+        # save it in the save folder
+        list_save = glob.glob(self.save_folder+'run*')
+ 		save_file = os.path.join(self.save_folder, 'run'+str(len(list_save))+'.txt'
+ 		with open(save_file, 'w') as f:
+            f.write(string_poses) 
         # set the ros flag
         self.set_ros_flag()
 
