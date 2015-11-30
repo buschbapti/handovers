@@ -103,6 +103,9 @@ class ComfortPoseAS(object):
             rospy.logerr("Grasp failed during execution")
             return self.server.set_aborted()
 
+        # grasp object
+        
+
         self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_HANDOVER
         self.server.publish_feedback(self.feedback)
         if self.display_only:
@@ -121,5 +124,5 @@ class ComfortPoseAS(object):
 
 if __name__ == '__main__':
     rospy.init_node('comfort_pose_action_server')
-    ComfortPoseAS('/reba/comfort_pose_action_server', 'right', (sys.argv[1]==True))
+    ComfortPoseAS('/reba/comfort_pose_action_server', 'right', (sys.argv[1]=='True'))
     rospy.spin()

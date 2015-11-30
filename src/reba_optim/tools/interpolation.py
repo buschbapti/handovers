@@ -38,3 +38,12 @@ def get_value(point, table):
         return table['grid'][index[0],index[1]]
     else:
         return table['grid'][index[0],index[1],index[2]]
+
+def linear_3d_interpolation(p0, p1, nb_points=10):
+    v = np.array(p1) - np.array(p0)
+    v_norm = np.linalg.norm(v)
+    delta = v_norm/float(nb_points-1)
+    points_list = []
+    for i in range(nb_points):
+        points_list.append(np.array(p0) + (i*delta/v_norm)*v)
+    return points_list
