@@ -1,0 +1,18 @@
+<launch>
+    <arg name="ip" default="127.0.0.1" /> <!-- IP of the VRPN server (like Motive or Arena) -->
+    <arg name="port" default="3883" /> <!-- Port of the VRPN server (default 3883) -->
+    <arg name="name" default="human" />
+    <param name="kinect/person_name" type="string" value="$(arg name)" />
+    <param name="tf_prefix" type="string" value="/human" />
+    
+    <include file="$(find kinect_skeleton_publisher)/launch/kinect_skeleton_publisher.launch" >
+      <arg name="ip" value="$(arg ip)"/> <!-- IP of the VRPN server (like Motive or Arena) -->
+      <arg name="port" value="$(arg port)"/> <!-- Port of the VRPN server (default 3883) -->
+      <arg name="num_skeletons" value="1"/>
+    </include>
+    
+	<node name="hip_publisher" pkg="kinect_skeleton_publisher" type="hip_publisher.py" args="True" output="screen" required="true"/>
+  <node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher" output="screen" required="true"/>
+  <include file="$(find reba_optim)/launch/reba_server.launch"/>
+
+</launch>
