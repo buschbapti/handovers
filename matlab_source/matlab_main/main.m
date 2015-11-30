@@ -99,7 +99,6 @@ else
 end
 
 default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
-    
 
 %% Main loop
 
@@ -138,7 +137,7 @@ while 1 % main loop keeps running non-stop
         
         [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(d_viaPoint, d_handover, placeHolderParam);
 
-        if 0%~mod(mctr,3)
+        if 0 %~mod(mctr,3)
              posesFromROS(1,:) = -999*ones(1,7);
         end
 
