@@ -13,7 +13,7 @@ class MatlabBridge:
         else:
             # delete the content of the folder
             for the_file in os.listdir(shared_folder):
-                file_path = os.path.join(folder, the_file)
+                file_path = os.path.join(shared_folder, the_file)
                 try:
                     if os.path.isfile(file_path):
                         os.unlink(file_path)
