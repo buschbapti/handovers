@@ -12,9 +12,11 @@ function [y] = smooth_by_filtering(q, param, plotFlag)
         set_fig_position([0.272 0.0407 0.298 0.931]);
     end
     
-    for j=1:7
+    
+    nDof = numel(q(1,:));
+    for j=1:nDof
         if plotFlag
-            subplot(7,1,j); grid on; hold on;
+            subplot(nDof,1,j); grid on; hold on;
             plot(q(:,j), 'b.-');
         end
         [b,a] = butter( forder, freq,  'low'); % IIR filter design
@@ -27,8 +29,8 @@ function [y] = smooth_by_filtering(q, param, plotFlag)
     if plotFlag
         h(2) = figurew('qdot');
         set_fig_position([0.537 0.0435 0.298 0.932]);
-        for j=1:7
-            subplot(7,1,j); grid on; hold on;
+        for j=1:nDof
+            subplot(nDof,1,j); grid on; hold on;
             plot(diff(q(:,j)), 'b.-');
             plot(diff(y(:,j)), 'r.-');
         end

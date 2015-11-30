@@ -31,7 +31,7 @@ drawnow;
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flag is zero, it will wait for a real pose in 
 % posesFromROS.txt and for the flag  flagROSfinished.txt
-run_without_ROS_trigger = 0;
+run_without_ROS_trigger = 1;
 
 paramGeneral.initialDT = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
 paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
@@ -129,10 +129,10 @@ while 1 % main loop keeps running non-stop
         end
         if 1 % deterministic placement
             scale = 1;
-            placeHolderParam.viaPoint.stdPos = scale*[-0.3  0.5   -0.1];    % meters
-            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0 +60]); % radians world coordinates
-            placeHolderParam.handOver.stdPos = scale*[-0.3  -0.2  -0.3];
-            placeHolderParam.handOver.stdRot = scale*d2r([ 50  0*30  +00]);
+            placeHolderParam.viaPoint.stdPos = scale*[0.1  0.05   -0.1];    % meters
+            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0 -45]); % radians world coordinates
+            placeHolderParam.handOver.stdPos = scale*[0.1  0.0  0];
+            placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
             placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
         end
         

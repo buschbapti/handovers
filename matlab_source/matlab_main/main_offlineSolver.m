@@ -7,18 +7,18 @@ if 1 % table
     typeOfDemoFolderName = 'interaction_data_plate_on_table';   
     keyName{1} = 'table1_20151111_113045';
     keyName{2} = 'table2_20151111_114051';
-    keyName{1} = 'table1TEST_20151124_105551';
-    keyName{2} = 'table2TEST_20151124_105606';    
+    keyName{1} = 'table1_20151130_121146';
+    keyName{2} = 'table2_20151130_115714';    
 end
 
 REBAposeNum = []; % the number represents the pose in the table entry (getREBAPose.m)
                   % if empty the fake reba pose generator will be used.
 
 % Tune parameters
-demo.fileLocation = ['../../demonstration_code_and_postprocessing/' typeOfDemoFolderName '/post_processed_data/set1.mat'];
+demo.fileLocation = ['../demonstration_code_and_postprocessing/' typeOfDemoFolderName '/post_processed_data/set1.mat'];
 demo.typeOfCollaboration = 'grasp plate on table';
-nUpdates  = 2;
-nRollOuts = 5;
+nUpdates  = 70;
+nRollOuts = 25;
 
 ikCost    = inf;
 initGuessOnPolicy = []; % if you add the name of a previous solution here the policy will be reload from there
@@ -63,11 +63,11 @@ default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to o
 
 %% Shake the positions to optimize new trajectories
 if 1
-    scale = [1 0.25] ;
+    scale = [0 0] ;
     placeHolderParam.viaPoint.stdPos = scale(1)*[-0.1 0.1  -0.12];    % meters
     placeHolderParam.viaPoint.stdRot = scale(1)*d2r([10  30  -50]); % radians world coordinates
-    placeHolderParam.handOver.stdPos = scale(2)*[0.1  0.5  0.5];
-    placeHolderParam.handOver.stdRot = scale(2)*d2r([ -90  +180  15]);
+    placeHolderParam.handOver.stdPos = scale(2)*[-0.2  0.2  0];
+    placeHolderParam.handOver.stdRot = scale(2)*d2r([ 0 0  0]);
     placeHolderParam.deterministic = 1; % make sure the shift is exact. Otherwise use it as std noise.
     [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(d_viaPoint, d_handover, placeHolderParam);
 
@@ -86,18 +86,21 @@ if 1
 end
 
 
+
 %%
 
 % get current position as rest posture
 if 0
     [~, ~, restT, qRest] = robot.readGenericCoordinates(robot.getIndex('Dummy_tip'));
-    save('baxterRest.mat', 'restT', 'qRest');
+    save('../../config/baxterRest.mat', 'restT', 'qRest');
 else
-    load('baxterRest.mat');
+    load('../../config/baxterRest.mat');
 end
 robot.qRestPosture = qRest; % robot.setJointAngles( qRest );
 robot.TrestPosture = restT; 
 robot.backToRestPosture();
+robot.sendTargetCartesianCoordinates(restT(1:3,4), tr2rpy(restT), robot.getHandle('Dummy_target'), 1); 
+
 
 % Initialize human
 human = VrepAgent(vrepObj, 'human');
@@ -189,20 +192,28 @@ subplot(2,1,2); hold on; grid on; ylabel 'yz'; axis 'equal';
 
 [traj1Raw, ~, keyName1] = trajectory_optimization(robot, demo.part{p}, param, init, hworkspc, keyName{1});
 
+% force solution to have close to zero velocity at the start, by adding
+% some extra steps and smoothing the trajectory
+%traj1RawS = force_smooth_raw_start(traj1Raw, 5);
+
 % Post process part 1
-traj1dmpSmoothStart = connect_with_DMP_wrapper(robot, traj1Raw.T, robot.TrestPosture, []);
+paramFilterJoint.active=1;
+traj1dmpSmoothStart = connect_with_DMP_wrapper(robot, traj1Raw.T, robot.TrestPosture, [], paramFilterJoint);
 
 % reach the last state by a straight trajectory
 addEnd = robot.goTo(traj1dmpSmoothStart.T(:,:,end), demo.part{1}.vpGrasp.T, demo.part{1}.vpAppr.nSteps);
-traj1dmpWithGrasp.T            = cat(3, traj1dmpSmoothStart.T, addEnd);
+traj1dmpWithGrasp.T  = cat(3, traj1dmpSmoothStart.T, addEnd);
 
 robot.backToRestPosture();                     
-replay_solution(traj1dmpWithGrasp.T, robot, [], [], 0, 1); 
+replay_solution(traj1dmpWithGrasp.T, robot, [], [], 0.02, 1); 
 
 solTraj1.sol     = traj1dmpSmoothStart;
 solTraj1.vpAppr  = demo.part{p}.vpAppr;
 solTraj1.vpGrasp = demo.part{p}.vpGrasp;
 save(['./lookupTraj1/' keyName1 '.mat'], 'solTraj1');
+
+
+keyboard
 
 %% part 2
 p = 2;
@@ -239,7 +250,8 @@ human.initialCartesianTrajectory = init.human;
 [traj2Raw, ~, keyName2] = trajectory_optimization(robot, demo.part{p}, param, init, hworkspc, keyName{2});
         
 % Post process
-traj2dmpSmoothStart = connect_with_DMP_wrapper(robot, traj2Raw.T, robot.TrestPosture, []);
+paramFilterJoint.active=1;
+traj2dmpSmoothStart = connect_with_DMP_wrapper(robot, traj2Raw.T, robot.TrestPosture, [], paramFilterJoint);
 
 % add the start part that removes the object from its current position
 removeObject = robot.goTo(demo.part{1}.vpGrasp.T, traj2dmpSmoothStart.T(:,:,1), demo.part{1}.vpAppr.nSteps);

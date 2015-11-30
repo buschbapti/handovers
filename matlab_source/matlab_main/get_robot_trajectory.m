@@ -26,7 +26,9 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             
             % add grasping approach. 
             T_appr1.T = move_XYZ_on_intrinsic_frame(viaPoint.T, [traj1initGuess.vpAppr.xyzShift]*1);
-            traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.TrestPosture, T_appr1.T, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
+            
+            paramFilterJoint.active=0;
+            traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.TrestPosture, T_appr1.T, paramFilterJoint, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
 
             % reach the last state by a straight trajectory
             addEnd = robot.goTo(traj1dmpConnect.T(:,:,end), viaPoint.T, 20);
@@ -64,7 +66,8 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             T_appr2.T = move_XYZ_on_intrinsic_frame(T_appr2.T, [0 0 -paramGeneral.offsetGripper_humanHand]');
             d_viaPoint.sendTargetCartesianCoordinates(T_appr2.T(1:3,4), tr2rpy(T_appr2.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);
 
-            traj2dmpConnect = connect_with_DMP_wrapper(robot, [], T_appr1.T, T_appr2.T, traj2initGuess.sol.q);
+            paramFilterJoint.active=0;
+            traj2dmpConnect = connect_with_DMP_wrapper(robot, [], T_appr1.T, T_appr2.T, paramFilterJoint, traj2initGuess.sol.q);
 
             % add the start part that removes the object from its current position
             removeObject = robot.goTo(traj1dmpWithGrasp.T(:,:,end), traj2dmpConnect.T(:,:,1), 20);
@@ -123,11 +126,14 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             % do FK and also recover the homog. transf. matrix
             for k=1:numel(traj1.q(:,1))
                 robot.setJointAngles(traj1.q(k,:),1);
+               % pause(0.1);
             end
 
             for k=1:numel(traj2.q(:,1))
                 robot.setJointAngles(traj2.q(k,:),1);
-            end  
+                pause(0.2);
+            end              
+keyboard
             %pause(3);
             %robot.simStart;
             
