@@ -126,8 +126,8 @@ while 1 % main loop keeps running non-stop
         end
         if 1 % deterministic placement
             scale = 1;
-            placeHolderParam.viaPoint.stdPos = scale*[0.1  0.05   -0.1];    % meters
-            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0 -45]); % radians world coordinates
+            placeHolderParam.viaPoint.stdPos = scale*[0.7   -0.3   -0.1];    % meters
+            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0 -95]); % radians world coordinates
             placeHolderParam.handOver.stdPos = scale*[0.1  0.0  0];
             placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
             placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
@@ -135,10 +135,13 @@ while 1 % main loop keeps running non-stop
         
         [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(d_viaPoint, d_handover, placeHolderParam);
 
-        if 0 %~mod(mctr,3)
-             posesFromROS(1,:) = -999*ones(1,7);
-        end
+        posesFromROS(2,:) = getREBAPose(1); % select one of the poses
+        posesFromROS(2,1) = 0*posesFromROS(2,1)+1.3;
+        posesFromROS(2,2) = 0*posesFromROS(2,2)+0.0;
+        posesFromROS(2,3) = posesFromROS(2,3)+0.3;
 
+        posesFromROS(2,1:3)
+        
     else % run for real. This needs ROS node to be run.        
         ctr = 0;
         % check for the presence of the file flag from ROS

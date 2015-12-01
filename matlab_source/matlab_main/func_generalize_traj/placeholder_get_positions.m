@@ -1,12 +1,12 @@
 function [rosPositions, viaPoint, reba] = placeholder_get_positions(dviapoint, dhandover, placeHolderParam)
 
     [~,~, viaPoint.T] = dviapoint.readGenericCoordinates(dviapoint.getIndex('Dummy_viaPoint_table'));        
-    viaPoint.T(1:3,4) = [0.58   -0.38 -.475]';
+    viaPoint.T(1:3,4) = [0   0   -.475]';
     [viaPointVec] = shake(viaPoint.T, placeHolderParam.viaPoint, placeHolderParam.deterministic);
 
     
     [~,~, reba.T] = dhandover.readGenericCoordinates(dhandover.getIndex('handoverPosition'));    
-    reba.T(1:3,4) = [1.2   0 -.0]';
+    reba.T(1:3,4) = [0   0  0]';
     [rebaVec]     = shake(reba.T,     placeHolderParam.handOver, placeHolderParam.deterministic);
     
     rosPositions = [viaPointVec; rebaVec];

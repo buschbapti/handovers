@@ -25,7 +25,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             traj1initGuess = resampleTraj(traj1initGuess, 50);
             
             % add grasping approach. 
-            T_appr1.T = move_XYZ_on_intrinsic_frame(viaPoint.T, [traj1initGuess.vpAppr.xyzShift]*1);
+            T_appr1.T = move_XYZ_on_intrinsic_frame(viaPoint.T, [traj1initGuess.vpAppr.xyzShift]*2);
             
             paramFilterJoint.active=0;
             traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.TrestPosture, T_appr1.T, paramFilterJoint, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
@@ -131,9 +131,8 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
 
             for k=1:numel(traj2.q(:,1))
                 robot.setJointAngles(traj2.q(k,:),1);
-                pause(0.2);
+                %pause(0.1);
             end              
-keyboard
             %pause(3);
             %robot.simStart;
             
