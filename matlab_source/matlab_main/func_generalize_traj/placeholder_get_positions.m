@@ -7,11 +7,13 @@ function [rosPositions, viaPoint, reba] = placeholder_get_positions(dviapoint, d
     ];
 
 
-    placeHolderParam.viaPoint.stdRot(3) = d2r(-90);
     posesFromROS(2,:) = getREBAPose(1); % select one of the poses
+    posesFromROS(2,1) = posesFromROS(2,1)+0.5;
+    posesFromROS(2,2) = 0;
     posesFromROS = changeQuaternionOrder(posesFromROS);
 
     viaPoint.T = fromQuaternionToHomog( posesFromROS(1,:));
+    viaPoint.T = viaPoint.T*my_trotz(d2r(-45));
     [viaPointVec] = shake(viaPoint.T, placeHolderParam.viaPoint, placeHolderParam.deterministic);
 
     reba.T = fromQuaternionToHomog( posesFromROS(2,:));

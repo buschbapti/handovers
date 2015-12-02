@@ -1,14 +1,4 @@
-% Two important transformations!!
-%
-% => calibrate_ref_TUDa_Inria_ref_frame.m
-%     This is a calibration function to account for the differences between the locations
-%     of the world frames of Darias and Baxter. This is because the scene in VREP assumes
-%     Baxter is located in the world of Darias.
-%     From our previous talks, I assume that the XY location and the orientation 
-%     of the reference frames are the same. But the Z height is definitely different. 
-%     As an initial guess I think the reference of Darias is 0.3543 meters above the 
-%     reference frame of Baxter
-%
+% Important transformation!!
 %
 % =>  changeQuaternionOrder.m
 %     The code assumes the poses from ROS are given in the roder
@@ -31,7 +21,7 @@ drawnow;
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flag is zero, it will wait for a real pose in 
 % posesFromROS.txt and for the flag  flagROSfinished.txt
-run_without_ROS_trigger = 1;
+run_without_ROS_trigger = 0;
 
 paramGeneral.initialDT = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
 paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
@@ -39,10 +29,11 @@ paramGeneral.tFinal    = [10 10]; % duration of each part of the trajectory
 paramGeneral.nTraj     = 150;   % number of steps in each trajectory
 
 
+% Speed up traj. generation by bypassing vrep.
 paramGeneral.speedUpWithoutFKChecking =  1 ;
 
 paramGeneral.debugMode = 0;
-paramGeneral.checkFinalSolution = 01; % this will stop the simulation and run 
+paramGeneral.checkFinalSolution = 0; % this will stop the simulation and run 
                                      % the FK on the smoothed final solution
                                      
 paramGeneral.dmpExtendTimeFactor = 1.1;    
@@ -89,13 +80,9 @@ d_handover = VrepAgent(vrepObj, 'humanFinalHandoverPosition');
 d_handover.getDummyHandlesFromVREP({'handoverPosition'});
 
 
-if 1% load lookup table
-    lookupTraj1 = load_tables('lookupTraj1');
-    lookupTraj2 = load_tables('lookupTraj2');
-else
-    lookupTraj1 = load_tables_debug('lookupTraj1');
-    lookupTraj2 = load_tables_debug('lookupTraj2');    
-end
+lookupTraj1 = load_tables('lookupTraj1');
+lookupTraj2 = load_tables('lookupTraj2');
+
 
 default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
 
@@ -119,25 +106,29 @@ while 1 % main loop keeps running non-stop
     
     if run_without_ROS_trigger == 1 % skip the ROS part and generate poses randomly
      
-        if 0 % random generator
-            scale = 0.85;
-            placeHolderParam.viaPoint.stdPos = scale*[0.6 0.6  1];    % meters
-            placeHolderParam.viaPoint.stdRot = scale*d2r([45  45  180]); % radians world coordinates
-            placeHolderParam.handOver.stdPos = scale*[0.6  1  1];
-            placeHolderParam.handOver.stdRot = scale*d2r([ 45  45  45]);
+        if 1 % random generator
+            scale = 1;
+            placeHolderParam.viaPoint.stdPos = scale*[0.5 0.5  0.5];    % meters
+            placeHolderParam.viaPoint.stdRot = scale*d2r([45  45  45]); % radians world coordinates
+            placeHolderParam.handOver.stdPos = scale*[0.995 0.8 0.85];
+            placeHolderParam.handOver.stdRot = scale*d2r([ 0 0 0]);
             placeHolderParam.deterministic   = 0; % make sure the shift is exact. Otherwise use it as std noise.
         end
-        if 1 % deterministic placement
+        if 0 % deterministic placement
             scale = 1;
-            placeHolderParam.viaPoint.stdPos = scale*[0.3   -0.4   -0.2];    % meters
+            placeHolderParam.viaPoint.stdPos = scale*[0.0   -0.2   0];    % meters
             placeHolderParam.viaPoint.stdRot = scale*d2r([0  0    0]); % radians world coordinates
-            placeHolderParam.handOver.stdPos = scale*[0.5  -0.3  0];
+            placeHolderParam.handOver.stdPos = scale*[0.5  0  0];
             placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
             placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
         end       
         
         [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(d_viaPoint, d_handover, placeHolderParam);
-
+        
+        fprintf('Current REBA poses\n');
+        fprintf('L1  %g %g %g %g %g %g %g\n', posesFromROS(1,:));
+        fprintf('L2  %g %g %g %g %g %g %g\n', posesFromROS(2,:));
+        
     else % run for real. This needs ROS node to be run.        
         ctr = 0;
         % check for the presence of the file flag from ROS
@@ -148,18 +139,13 @@ while 1 % main loop keeps running non-stop
             ctr=ctr+1;
         end
         delete([storePath '/flagROSfinished.txt']);
-        fprintf('\n\nROS poses acquired.\n')
-        pause(1);
-        
+        fprintf('\n\nROS poses acquired.\n');
+        pause(0.1);
         load([storePath '/posesFromROS.txt']);
-        %posesFromROS = calibrate_ref_TUDa_Inria_ref_frame(posesFromROS);
     end
-
         
     fprintf('Poses from ROS received\n');
-    %play_sound(soundPlayer, 'poses_acquired'); pause(2);
-    
-    %play_sound(soundPlayer, 'generating_trajectory'); pause(1);
+
     % fix quaternion representation from Matlab to ROS
     posesMatlabFormat = changeQuaternionOrder(posesFromROS);
         
@@ -170,23 +156,15 @@ while 1 % main loop keeps running non-stop
                                           lookupTraj1, lookupTraj2, soundPlayer);
     
     write_trajectory_file(storePath, traj1, traj2, paramGeneral.nTraj, paramGeneral.initialDT);
-    fprintf('Trajectory generated and sent to ROS!!\n\n\n');
-
-    
-    pauseTime = 0.0001;
-    fprintf('*** Repeating a new cycle in %g seconds ***\n\n\n', pauseTime);    
-    
-    %pause(pauseTime);
+    fprintf('Trajectory generated %g sec.\n\n\n', toc);
 
     mctr=mctr+1;
     close all;   
- 
-    fprintf('Trajectory generated in %g (seconds)\n', toc);
     
-   
 end
 
 
+%robot.setJointAngles(d2r([ 95 -60 0 0 0 0 0]),1);
 
 
 

@@ -123,15 +123,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
         traj1_ = [traj1.t' traj1.q];
         traj2_ = [traj2.t' traj2.q];        
 
-        
-        if 0% paramGeneral.checkFinalSolution
-            play_sound(soundPlayer, 'do_you_want_to_see_final_sol');
-            finalAns = input('Do you want to see the final solution? (0/1): ');
-        end
-
-       % play_sound(soundPlayer, 'trajectory_generated');
-        
-        
+             
         if paramGeneral.checkFinalSolution
         
             % Run the smoothed solution just for visual inspection purposes
@@ -139,17 +131,15 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             % do FK and also recover the homog. transf. matrix
             for k=1:numel(traj1.q(:,1))
                 robot.setJointAngles(traj1.q(k,:),1);
-               % pause(0.1);
+                pause(0.051);
             end
 
             for k=1:numel(traj2.q(:,1))
                 robot.setJointAngles(traj2.q(k,:),1);
-                %pause(0.05);
-            end              
-            %pause(3);
-            %robot.simStart;
+                pause(0.051);
+            end    
             
-            keyboard
+            %keyboard
             
         end
         
