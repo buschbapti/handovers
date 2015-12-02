@@ -100,8 +100,7 @@ class MatlabBridge:
             with open(save_file, 'w') as outfile:
                 json.dump(dic, outfile, indent=True)
 
-        def read_one_file(filename, initial_state):
-            delta_time = 1.
+        def read_one_file(filename, initial_state, delta_time):
             trajectory = JointTrajectory()
             trajectory.joint_names = self.robot_joint_names
             # get initial state as first point
@@ -123,8 +122,8 @@ class MatlabBridge:
         
         # wait for matlab flag
         self.wait_for_matlab_flag()
-        traj1 = read_one_file(self.traj1_file, current_state.position)
-        traj2 = read_one_file(self.traj2_file, traj1.points[-1].positions)
+        traj1 = read_one_file(self.traj1_file, current_state.position, 1)
+        traj2 = read_one_file(self.traj2_file, traj1.points[-1].positions, 0.1)
         # save them
         save_trajectory(traj1, 1)
         save_trajectory(traj2, 2)
