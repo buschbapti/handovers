@@ -122,7 +122,7 @@ class MatlabBridge:
         
         # wait for matlab flag
         self.wait_for_matlab_flag()
-        traj1 = read_one_file(self.traj1_file, current_state.position, 1)
+        traj1 = read_one_file(self.traj1_file, current_state.position, 0.1)
         traj2 = read_one_file(self.traj2_file, traj1.points[-1].positions, 0.1)
         # save them
         save_trajectory(traj1, 1)

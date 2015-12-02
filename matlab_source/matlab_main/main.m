@@ -31,7 +31,7 @@ drawnow;
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flag is zero, it will wait for a real pose in 
 % posesFromROS.txt and for the flag  flagROSfinished.txt
-run_without_ROS_trigger = 1;
+run_without_ROS_trigger = 0;
 
 paramGeneral.initialDT = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
 paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
