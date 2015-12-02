@@ -28,7 +28,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             T_appr1.T = move_XYZ_on_intrinsic_frame(viaPoint.T, [traj1initGuess.vpAppr.xyzShift]*2);
             
             paramFilterJoint.active=0;
-            traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.TrestPosture, T_appr1.T, paramFilterJoint, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
+            traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.qRestPosture, T_appr1.T, paramFilterJoint, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
 
             % reach the last state by a straight trajectory
             addEnd = robot.goTo(traj1dmpConnect.T(:,:,end), viaPoint.T, 20);
@@ -49,8 +49,8 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             save('currentViaPointSolution.mat', 'T_appr1', 'traj1dmpWithGrasp', 'viaPoint');
         else
             load('currentViaPointSolution.mat');
-        end
-        
+        end        
+       
         if ~isempty(rebaHand)
             play_sound(soundPlayer, 'step_two');
             

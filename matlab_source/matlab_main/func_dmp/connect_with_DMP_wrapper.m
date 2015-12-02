@@ -1,4 +1,4 @@
-function [trajDMP] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend, paramFilterJoint, trajRawJoint, dmpExtendTimeFactor)
+function [trajDMP] =  connect_with_DMP_wrapper(robot, trajRaw, TorQstart, Tend, paramFilterJoint, trajRawJoint, dmpExtendTimeFactor)
 % [trajdmpApproach] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend)
 % use DMPS to force start and goal states
 %
@@ -26,10 +26,16 @@ function [trajDMP] =  connect_with_DMP_wrapper(robot, trajRaw, Tstart, Tend, par
         qEnd = [];
     end
     
-    if ~isempty(Tstart)
-        % do IK at the ideal initial state    
-        robot.sendTargetCartesianCoordinates( Tstart(1:3,4), tr2rpy(Tstart), robot.getHandle('Dummy_target'), 1);
-        [~, ~, ~, qStart] = robot.readGenericCoordinates(robot.getIndex('Dummy_tip'));
+    if ~isempty(TorQstart)
+        if sum( size(TorQstart) == [4 4]) ==2 % You sent the homog transf. matrix
+            % do IK at the ideal initial state    
+            robot.sendTargetCartesianCoordinates( TorQstart(1:3,4), tr2rpy(TorQstart), robot.getHandle('Dummy_target'), 1);
+            pause(0.2); % it is better to wait a little here such that the IK can stabilize the dumping
+            [~, ~, ~, qStart] = robot.readGenericCoordinates(robot.getIndex('Dummy_tip'));
+        end
+        if numel(TorQstart) == 7 % you sent joint coordinates
+            qStart = TorQstart;
+        end
     else
         qStart = [];
     end

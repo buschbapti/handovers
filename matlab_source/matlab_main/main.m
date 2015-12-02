@@ -31,7 +31,7 @@ drawnow;
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flag is zero, it will wait for a real pose in 
 % posesFromROS.txt and for the flag  flagROSfinished.txt
-run_without_ROS_trigger = 0;
+run_without_ROS_trigger = 1;
 
 paramGeneral.initialDT = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
 paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
@@ -41,7 +41,7 @@ paramGeneral.nTraj     = 150;   % number of steps in each trajectory
 
 
 paramGeneral.debugMode = 0;
-paramGeneral.checkFinalSolution = 1; % this will stop the simulation and run 
+paramGeneral.checkFinalSolution = 0; % this will stop the simulation and run 
                                      % the FK on the smoothed final solution
                                      
 paramGeneral.dmpExtendTimeFactor = 1.1;    
@@ -127,7 +127,7 @@ while 1 % main loop keeps running non-stop
         if 1 % deterministic placement
             scale = 1;
             placeHolderParam.viaPoint.stdPos = scale*[0.7   -0.3   -0.1];    % meters
-            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0 -95]); % radians world coordinates
+            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0    0]); % radians world coordinates
             placeHolderParam.handOver.stdPos = scale*[0.1  0.0  0];
             placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
             placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
@@ -140,8 +140,15 @@ while 1 % main loop keeps running non-stop
         posesFromROS(2,2) = 0*posesFromROS(2,2)+0.0;
         posesFromROS(2,3) = posesFromROS(2,3)+0.3;
 
-        posesFromROS(2,1:3)
-        
+        posesFromROS(2,1:3);
+
+        % posesFromROS = [        
+        %0.668624682802	-0.376531205034	-0.418522915653	0.875912087128	0.482409229925	-0.00383223594505	-0.00668314856413	
+        %0.763753159017	0.108066561091	-0.00921452864744	0.64632273384	-0.275007146983	-0.6313349361	0.328715973583	
+        % ];
+        posesFromROS(1,1:3) = [ 0.668624682802	-0.376531205034	  -0.418522915653  ];
+        posesFromROS(2,:)   = [ 0.4+0.763753159017	0.108066561091	-0.00921452864744	0.64632273384	-0.275007146983	-0.6313349361	0.328715973583			];        
+
     else % run for real. This needs ROS node to be run.        
         ctr = 0;
         % check for the presence of the file flag from ROS
