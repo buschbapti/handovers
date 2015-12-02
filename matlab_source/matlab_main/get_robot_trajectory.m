@@ -27,21 +27,27 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             % add grasping approach. 
             T_appr1.T = move_XYZ_on_intrinsic_frame(viaPoint.T, [traj1initGuess.vpAppr.xyzShift]*2);
             
-            paramFilterJoint.active=0;
-            traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.qRestPosture, T_appr1.T, paramFilterJoint, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
-
-            % reach the last state by a straight trajectory
-            addEnd = robot.goTo(traj1dmpConnect.T(:,:,end), viaPoint.T, 20);
+            
+            
+            if paramGeneral.speedUpWithoutFKChecking
+                traj1dmpConnect = fast_connect_with_DMP_wrapper(robot, traj1initGuess.sol.q, robot.qRestPosture, T_appr1.T, paramGeneral.dmpExtendTimeFactor);
+                addEnd = robot.goTo(T_appr1.T, viaPoint.T, 20);
+                robot.sendTargetCartesianCoordinates( T_appr1.T(1:3,4,end), tr2rpy(T_appr1.T(:,:,end)), robot.getHandle('Dummy_target'), 1);                                
+            else
+                paramFilterJoint.active=0;
+                traj1dmpConnect = connect_with_DMP_wrapper(robot, [], robot.qRestPosture, T_appr1.T, paramFilterJoint, traj1initGuess.sol.q, paramGeneral.dmpExtendTimeFactor);
+                addEnd = robot.goTo(traj1dmpConnect.T(:,:,end), viaPoint.T, 20);
+                robot.sendTargetCartesianCoordinates( traj1dmpConnect.T(1:3,4,end), tr2rpy(traj1dmpConnect.T(:,:,end)), robot.getHandle('Dummy_target'), 1);                                
+                traj1dmpWithGrasp.T = cat(3, traj1dmpConnect.T, addEnd);
+            end
             
             % do approach to grasp IK here
-            robot.sendTargetCartesianCoordinates( traj1dmpConnect.T(1:3,4,end), tr2rpy(traj1dmpConnect.T(:,:,end)), robot.getHandle('Dummy_target'), 1);
             robot.setJointAngles( traj1dmpConnect.q(end,:))
             for t = 1:numel(addEnd(1,1,:))
                 robot.sendTargetCartesianCoordinates( addEnd(1:3,4,t), tr2rpy(addEnd(:,:,t)), robot.getHandle('Dummy_target'), 1);
                 [~, ~, ~, addEndQ(t,:)] = robot.readGenericCoordinates( robot.getIndex('Dummy_tip') );
             end
-            
-            traj1dmpWithGrasp.T = cat(3, traj1dmpConnect.T, addEnd);
+
             traj1dmpWithGrasp.q = [traj1dmpConnect.q; addEndQ];
 
             d_viaPoint.sendTargetCartesianCoordinates(viaPoint.T(1:3,4), tr2rpy(viaPoint.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);    
@@ -66,14 +72,22 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             T_appr2.T = move_XYZ_on_intrinsic_frame(T_appr2.T, [0 0 -paramGeneral.offsetGripper_humanHand]');
             d_viaPoint.sendTargetCartesianCoordinates(T_appr2.T(1:3,4), tr2rpy(T_appr2.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);
 
-            paramFilterJoint.active=0;
-            traj2dmpConnect = connect_with_DMP_wrapper(robot, [], T_appr1.T, T_appr2.T, paramFilterJoint, traj2initGuess.sol.q);
-
-            % add the start part that removes the object from its current position
-            removeObject = robot.goTo(traj1dmpWithGrasp.T(:,:,end), traj2dmpConnect.T(:,:,1), 20);
             
+            if paramGeneral.speedUpWithoutFKChecking
+                traj2dmpConnect = fast_connect_with_DMP_wrapper(robot, traj2initGuess.sol.q,T_appr1.T,  T_appr2.T, paramGeneral.dmpExtendTimeFactor);
+                % add the start part that removes the object from its current position
+                removeObject = robot.goTo(addEnd(:,:,end), T_appr1.T(:,:,1), 20);
+            else            
+                paramFilterJoint.active=0;
+                traj2dmpConnect = connect_with_DMP_wrapper(robot, [], T_appr1.T, T_appr2.T, paramFilterJoint, traj2initGuess.sol.q);                
+                removeObject = robot.goTo(traj1dmpWithGrasp.T(:,:,end), traj2dmpConnect.T(:,:,1), 20);                
+                traj2dmpWithGrasp.T = cat(3, removeObject, traj2dmpConnect.T);
+            end
+
+           
             % do grasp to approach IK here
-            robot.sendTargetCartesianCoordinates(traj1dmpWithGrasp.T(1:3,4,end), tr2rpy(traj1dmpWithGrasp.T(:,:,end)), robot.getHandle('Dummy_target'), 1);
+            %robot.sendTargetCartesianCoordinates(traj1dmpWithGrasp.T(1:3,4,end), tr2rpy(traj1dmpWithGrasp.T(:,:,end)), robot.getHandle('Dummy_target'), 1);
+            robot.sendTargetCartesianCoordinates(addEnd(1:3,4,end), tr2rpy(addEnd(:,:,end)), robot.getHandle('Dummy_target'), 1);
             robot.setJointAngles( traj1dmpWithGrasp.q(end,:));
             
             for t = 1:numel(removeObject(1,1,:))
@@ -81,7 +95,6 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
                 [~, ~, ~, removeObjectQ(t,:)] = robot.readGenericCoordinates( robot.getIndex('Dummy_tip') );
             end
                         
-            traj2dmpWithGrasp.T = cat(3, removeObject, traj2dmpConnect.T);
             traj2dmpWithGrasp.q = [removeObjectQ; traj2dmpConnect.q];
 
         else
@@ -131,7 +144,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
 
             for k=1:numel(traj2.q(:,1))
                 robot.setJointAngles(traj2.q(k,:),1);
-                pause(0.1);
+                %pause(0.05);
             end              
             %pause(3);
             %robot.simStart;

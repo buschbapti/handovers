@@ -53,18 +53,18 @@ function [sol] = add_joint_trajectory_withoutIK(sol, robot)
     
     % add some extra frames at the beginning
     for j = 1:nExtrasStart
-        sol.T = cat(3, sol.T(:,:,1), sol.T);
+        %sol.T = cat(3, sol.T(:,:,1), sol.T);
         sol.q = [sol.q(1,:); sol.q];
     end
         
     % add some extra frames at the end
     for j = 1:nExtrasEnd
-        sol.T = cat(3, sol.T, sol.T(:,:,end));
+        %sol.T = cat(3, sol.T, sol.T(:,:,end));
         sol.q = [sol.q; sol.q(end,:)];
     end    
     
     
-    sol.p = squeeze(sol.T(1:3,4,:));
+   % sol.p = squeeze(sol.T(1:3,4,:));
     
 end
 
