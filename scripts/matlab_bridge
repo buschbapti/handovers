@@ -3,8 +3,11 @@ import rospy
 import os.path
 from reba_optim.srv import TrajectoryFromReba, TrajectoryFromRebaResponse
 from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
+from baxter_commander.persistence import trajtodict
+import baxter_commander
 import transformations
 import glob
+import json
 
 class MatlabBridge:
     def __init__(self, matlab_flag='flagMatlabFinished.txt', ros_flag='flagROSfinished.txt', shared_folder='/tmp/matlab_bridge/'):
@@ -32,7 +35,7 @@ class MatlabBridge:
         # define save folder
         self.save_folder = '/tmp/reba_save/'
         if not os.path.exists(self.save_folder):
-        	os.makedirs(self.save_folder)
+            os.makedirs(self.save_folder)
         self.rate = rospy.Rate(10)
         self.robot_joint_names = ['right_s0', 'right_s1', 'right_e0', 'right_e1',
                                 'right_w0', 'right_w1', 'right_w2']
@@ -79,25 +82,40 @@ class MatlabBridge:
         with open(self.poses_file, 'w') as f:
             f.write(string_poses)
         # save it in the save folder
-        list_save = glob.glob(self.save_folder+'run*')
- 		save_file = os.path.join(self.save_folder, 'run'+str(len(list_save))+'.txt'
- 		with open(save_file, 'w') as f:
+        list_save = glob.glob(os.path.join(self.save_folder,'run*.txt'))
+        self.run_number = len(list_save)
+        save_file = os.path.join(self.save_folder, 'run'+str(self.run_number)+'.txt')
+        with open(save_file, 'w') as f:
             f.write(string_poses) 
         # set the ros flag
         self.set_ros_flag()
 
-    def read_trajectory_files(self):
+    def read_trajectory_files(self, current_state):
         rospy.loginfo('Reading trajectory.')
+        def save_trajectory(traj, i):
+            save_file = os.path.join(self.save_folder, 'run'+str(self.run_number)+'_traj'+str(i)+'.json')
+            # convert trajectory to json
+            dic = trajtodict(traj)
+            # dump the json
+            with open(save_file, 'w') as outfile:
+                json.dump(dic, outfile, indent=True)
 
-        def read_one_file(filename):
+        def read_one_file(filename, initial_state):
+            delta_time = 1.
             trajectory = JointTrajectory()
             trajectory.joint_names = self.robot_joint_names
+            # get initial state as first point
+            point = JointTrajectoryPoint()
+            point.time_from_start = rospy.Duration(0.1)
+            point.positions = initial_state
+            trajectory.points.append(point)
+            # loop through the files for next points
             with open(filename) as f:
                 for line in f:
                     point = JointTrajectoryPoint()
                     for field_num, field in enumerate(line.split('\t')):
                         if field_num==0:
-                            point.time_from_start = rospy.Duration(float(field))
+                            point.time_from_start = rospy.Duration(float(field)+delta_time)
                         elif field!='\n':
                             point.positions.append(float(field))
                     trajectory.points.append(point)
@@ -105,8 +123,11 @@ class MatlabBridge:
         
         # wait for matlab flag
         self.wait_for_matlab_flag()
-        traj1 = read_one_file(self.traj1_file)
-        traj2 = read_one_file(self.traj2_file)
+        traj1 = read_one_file(self.traj1_file, current_state.position)
+        traj2 = read_one_file(self.traj2_file, traj1.points[-1].positions)
+        # save them
+        save_trajectory(traj1, 1)
+        save_trajectory(traj2, 2)
 
         rospy.loginfo('Finished reading trajectory.')
         # remove the files
@@ -121,7 +142,7 @@ class MatlabBridge:
         # query the bridge for the trajectory
         self.write_poses_in_file(handOverLocation, objectLocation)
         # wait for the response
-        traj1, traj2 = self.read_trajectory_files()
+        traj1, traj2 = self.read_trajectory_files(req.current_state)
         # return the calculated trajectory
         rospy.loginfo('Sending trajectory.')
         return TrajectoryFromRebaResponse(trajectory_to_object=traj1,

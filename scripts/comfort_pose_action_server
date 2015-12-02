@@ -84,12 +84,13 @@ class ComfortPoseAS(object):
         traj_request = TrajectoryFromRebaRequest()
         traj_request.object_location = transformations.list_to_pose(object_pose).pose
         traj_request.hand_over_location = hand_over_location
+        traj_request.current_state = self.arm.get_current_state().joint_state
         trajectories = self.traj_service(traj_request)
 
         trajectory_to_object = trajectories.trajectory_to_object
         trajectory_to_handover = trajectories.trajectory_to_handover
 
-        # Trajectory execution
+        # Trajectory to object execution
         self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_OBJECT
         self.server.publish_feedback(self.feedback)
         if self.display_only:
@@ -100,12 +101,18 @@ class ComfortPoseAS(object):
             grasp_success = self.arm.execute(trajectory_to_object)
 
         if not grasp_success:
-            rospy.logerr("Grasp failed during execution")
+            rospy.logerr("Trajectory to object failed during execution")
             return self.server.set_aborted()
 
-        # grasp object
+        # grasp object by closing the gripper
+        self.feedback.state = RebaHandOverFeedback.STATE_GRASPING_OBJECT
+        self.server.publish_feedback(self.feedback)
+        grasp_success = self.arm.close()
+        if not grasp_success:
+            rospy.logerr("Grasp failed during execution")
+            return self.server.set_aborted()
         
-
+        # Trajectory to handover execution
         self.feedback.state = RebaHandOverFeedback.STATE_RUNNING_TRAJECTORY_TO_HANDOVER
         self.server.publish_feedback(self.feedback)
         if self.display_only:
