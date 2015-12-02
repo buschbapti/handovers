@@ -1,14 +1,33 @@
 function [rosPositions, viaPoint, reba] = placeholder_get_positions(dviapoint, dhandover, placeHolderParam)
 
-    [~,~, viaPoint.T] = dviapoint.readGenericCoordinates(dviapoint.getIndex('Dummy_viaPoint_table'));        
-    viaPoint.T(1:3,4) = [0   0   -.475]';
+
+    % Take original poses from Baptiste as initial starting points
+    posesFromROS(1,:) = [        
+        0.668624682802	-0.376531205034	-0.418522915653	0.875912087128	0.482409229925	-0.00383223594505	-0.00668314856413	
+    ];
+
+
+    placeHolderParam.viaPoint.stdRot(3) = d2r(-90);
+    posesFromROS(2,:) = getREBAPose(1); % select one of the poses
+    posesFromROS = changeQuaternionOrder(posesFromROS);
+
+    viaPoint.T = fromQuaternionToHomog( posesFromROS(1,:));
     [viaPointVec] = shake(viaPoint.T, placeHolderParam.viaPoint, placeHolderParam.deterministic);
 
-    
-    [~,~, reba.T] = dhandover.readGenericCoordinates(dhandover.getIndex('handoverPosition'));    
-    reba.T(1:3,4) = [0   0  0]';
-    [rebaVec]     = shake(reba.T,     placeHolderParam.handOver, placeHolderParam.deterministic);
-    
+    reba.T = fromQuaternionToHomog( posesFromROS(2,:));
+    [rebaVec] = shake(reba.T , placeHolderParam.handOver, placeHolderParam.deterministic);
+
+    if 0
+        [~,~, viaPoint.T] = dviapoint.readGenericCoordinates(dviapoint.getIndex('Dummy_viaPoint_table'));        
+        viaPoint.T(1:3,4) = [0   0   -.475]';
+        [viaPointVec] = shake(viaPoint.T, placeHolderParam.viaPoint, placeHolderParam.deterministic);
+
+
+        [~,~, reba.T] = dhandover.readGenericCoordinates(dhandover.getIndex('handoverPosition'));    
+        reba.T(1:3,4) = [0   0  0]';
+        [rebaVec]     = shake(reba.T,     placeHolderParam.handOver, placeHolderParam.deterministic);
+    end
+
     rosPositions = [viaPointVec; rebaVec];
 
 end

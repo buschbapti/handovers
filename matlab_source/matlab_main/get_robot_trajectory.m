@@ -17,7 +17,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
         % pause();
 
         if ~isempty(viaPoint)
-            play_sound(soundPlayer, 'step_one');
+          %  play_sound(soundPlayer, 'step_one');
             
             traj1initGuess = search_lookupTable(lookupTraj1, viaPoint.T);
             
@@ -46,13 +46,13 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
 
             d_viaPoint.sendTargetCartesianCoordinates(viaPoint.T(1:3,4), tr2rpy(viaPoint.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);    
  
-            save('currentViaPointSolution.mat', 'T_appr1', 'traj1dmpWithGrasp', 'viaPoint');
+           % save('currentViaPointSolution.mat', 'T_appr1', 'traj1dmpWithGrasp', 'viaPoint');
         else
-            load('currentViaPointSolution.mat');
+           % load('currentViaPointSolution.mat');
         end        
        
         if ~isempty(rebaHand)
-            play_sound(soundPlayer, 'step_two');
+          %  play_sound(soundPlayer, 'step_two');
             
             % find the closes pre-computed solution in terms of the final position
             % of the trajectory
@@ -116,7 +116,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
             finalAns = input('Do you want to see the final solution? (0/1): ');
         end
 
-        play_sound(soundPlayer, 'trajectory_generated');
+       % play_sound(soundPlayer, 'trajectory_generated');
         
         
         if paramGeneral.checkFinalSolution
@@ -131,10 +131,12 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
 
             for k=1:numel(traj2.q(:,1))
                 robot.setJointAngles(traj2.q(k,:),1);
-                %pause(0.1);
+                pause(0.1);
             end              
             %pause(3);
             %robot.simStart;
+            
+            keyboard
             
         end
         
