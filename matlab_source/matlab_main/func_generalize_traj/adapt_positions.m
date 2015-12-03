@@ -1,24 +1,15 @@
-function [rosPositions, viaPoint, reba] = placeholder_get_positions(placeHolderParam)
+function [posesMatlabFormat] = adapt_positions(posesMatlabFormat, adjustAngle)
 
 
-    % Take original poses from Baptiste as initial starting points
-    posesFromROS(1,:) = [        
-        0.668624682802	-0.376531205034	-0.418522915653	0.875912087128	0.482409229925	-0.00383223594505	-0.00668314856413	
-    ];
+    rebaT = fromQuaternionToHomog( posesMatlabFormat(2,:));
+    rebaT2  = rebaT*my_troty( d2r(adjustAngle) );
 
-    posesFromROS(2,:) = getREBAPose(20); % select one of the poses
-    posesFromROS(2,1) = posesFromROS(2,1)+0.15;
-    posesFromROS(2,2) = 0;
-    posesFromROS = changeQuaternionOrder(posesFromROS);
+    quat_temp = Quaternion( rebaT2(1:3,1:3));
+    
+    % use it in normal matlab order
+    vec = [rebaT2(1:3,4)' quat_temp.s quat_temp.v];
 
-    viaPoint.T = fromQuaternionToHomog( posesFromROS(1,:));
-    viaPoint.T = viaPoint.T*my_trotz(d2r(-65));
-    [viaPointVec] = shake(viaPoint.T, placeHolderParam.viaPoint, placeHolderParam.deterministic);
-
-    reba.T = fromQuaternionToHomog( posesFromROS(2,:));
-    [rebaVec] = shake(reba.T , placeHolderParam.handOver, placeHolderParam.deterministic);
-
-    rosPositions = [viaPointVec; rebaVec];
+    posesMatlabFormat(2,:) = vec;
 
 end
 
