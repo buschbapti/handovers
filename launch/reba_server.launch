@@ -1,4 +1,5 @@
 <launch> 
-  <rosparam command="load" file="$(find reba_optim)/config/hand_over_location.yaml" param="/reba/hand_over_location"/>
+  <rosparam command="load" file="$(find reba_optim)/config/right_hand_over_location.yaml" param="/reba/hand_over_location/right"/>
+  <rosparam command="load" file="$(find reba_optim)/config/left_hand_over_location.yaml" param="/reba/hand_over_location/left"/>
   <node name="reba_server" pkg="reba_optim" type="reba_server" output="screen"/>
 </launch>
