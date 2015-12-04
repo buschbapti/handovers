@@ -6,25 +6,28 @@ import tf
 import rospkg
 import transformations
 from threading import Lock
+import sys
 
 class RebaServer:
     def __init__(self, rate):
-        self.tf_hip = rospy.get_param('/reba/hand_over_location')
+        self.tf_hand = []
+        self.tf_hand.append(rospy.get_param('/reba/hand_over_location/right'))
+        self.tf_hand.append(rospy.get_param('/reba/hand_over_location/left'))
         self.tfl = tf.TransformListener()
         self.tfb = tf.TransformBroadcaster()
         self.rate = rospy.Rate(rate)
         self.tf_hand_over = ([0,0,0],[0,0,0,1])
         self.lock = Lock()
 
-    def calculate_hand_over(self, tf_hip):
-        # read transformation from hip to handover location from parameter server
-        tf_hand = rospy.get_param('/reba/hand_over_location')
+    def calculate_hand_over(self, tf_hip, side=0):
         # multiply the two tf
-        tf_hand_over = transformations.multiply_transform(tf_hip, tf_hand)
+        tf_hand_over = transformations.multiply_transform(tf_hip, self.tf_hand[side])
         # transform it into vrep format
         tf_vrep = ([0.,0.,0.],[0.,0.70710678,0.,0.70710678])
+        tf_hand_over = transformations.multiply_transform(tf_hand_over, tf_vrep)
         with self.lock:
-            self.tf_hand_over = transformations.multiply_transform(tf_hand_over, tf_vrep)
+            self.tf_hand_over = tf_hand_over
+        return tf_hand_over
 
     def cb_reba_request_received(self, reba_pose_req):
         # read tf from VREP to hip
@@ -39,23 +42,30 @@ class RebaServer:
         # publish the transformation
         self.tfb.sendTransform(self.tf_hand_over[0], self.tf_hand_over[1], rospy.Time.now(), '/vrep/hand_over', '/vrep_frame')
     
-    def update_handover(self):
+    def update_handovers(self):
         # get hip pose
         if self.tfl.canTransform('/vrep_frame', '/human/hip', rospy.Time(0)):
             tf_hip = self.tfl.lookupTransform('/vrep_frame', '/human/hip', rospy.Time(0))
             # calculate the hand_over pose
-            self.calculate_hand_over(tf_hip)
+            tf_right = self.calculate_hand_over(tf_hip, 0)
+            tf_left = self.calculate_hand_over(tf_hip, 1)
+            self.tfb.sendTransform(tf_right[0], tf_right[1], rospy.Time.now(), '/vrep/hand_over/right', '/vrep_frame')
+            self.tfb.sendTransform(tf_left[0], tf_left[1], rospy.Time.now(), '/vrep/hand_over/left', '/vrep_frame')
 
-
-    def run(self):
+    def run(self, continous_publish=False):
         rospy.Service('/reba/get_reba', RebaPose, self.cb_reba_request_received)
         rospy.loginfo('REBA server running...')
-        while not rospy.is_shutdown():
-            self.publish_handover()
-            self.rate.sleep()
+        if continous_publish:
+            while not rospy.is_shutdown():
+                self.update_handovers()
+                self.rate.sleep()
+        else:
+            while not rospy.is_shutdown():
+                self.publish_handover()
+                self.rate.sleep()
 
 if __name__ == "__main__":
     rospy.init_node('reba_server')
     reba = RebaServer(10)
-    reba.run()
+    reba.run(sys.argv[1]=='True')
     

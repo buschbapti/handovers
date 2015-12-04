@@ -3,13 +3,16 @@
   	<arg name="port" default="3883" /> <!-- Port of the VRPN server (default 3883) -->
   	<arg name="opt_port" default="3884" /> <!-- Port of the VRPN server (default 3883) -->
   	<arg name="display_only" default="False" />
+  	<arg name="debug_handover" default="False" />
 
 	<node name="comfort_pose_action_server" pkg="reba_optim" type="comfort_pose_action_server" args="$(arg display_only)" output="screen" required="true"/>
 	<node name="vrep_frames_publisher" pkg="reba_optim" type="vrep_frames_publisher" output="screen" required="true"/>
 	<node name="hip_publisher" pkg="kinect_skeleton_publisher" type="hip_publisher.py" output="screen" required="true"/>
 	
 	<node name="matlab_bridge" pkg="reba_optim" type="matlab_bridge" output="screen" required="true"/>
-	<include file="$(find reba_optim)/launch/reba_server.launch"/>
+	<include file="$(find reba_optim)/launch/reba_server.launch">
+		<arg name="debug_handover" value="$(arg debug_handover)" />	
+	</include>
 	<include file="$(find baxter_commander)/launch/commander.launch"/>
 
 

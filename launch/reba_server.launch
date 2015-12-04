@@ -1,5 +1,7 @@
 <launch> 
+  <arg name="debug_handover" default="False" />
+
   <rosparam command="load" file="$(find reba_optim)/config/right_hand_over_location.yaml" param="/reba/hand_over_location/right"/>
   <rosparam command="load" file="$(find reba_optim)/config/left_hand_over_location.yaml" param="/reba/hand_over_location/left"/>
-  <node name="reba_server" pkg="reba_optim" type="reba_server" output="screen"/>
+  <node name="reba_server" pkg="reba_optim" type="reba_server" output="screen" required="true"/>
 </launch>
