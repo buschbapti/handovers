@@ -1,9 +1,8 @@
 function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_viaPoint, d_handover, humanA, ...
                             paramGeneral, lookupTraj1, lookupTraj2, soundPlayer)
 
-
     % 
-    [posesMatlabFormat] = adapt_positions(posesMatlabFormat, -20);
+    %[posesMatlabFormat] = adapt_positions(posesMatlabFormat, -30);
          
     [viaPoint, rebaHand ] = what_to_update(posesMatlabFormat, d_viaPoint, d_handover, humanA);        
 
@@ -120,16 +119,17 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
         % Run the smoothed solution just for visual inspection purposes
         %robot.simStop;
         % do FK and also recover the homog. transf. matrix
+        %   robot.setJointAngles(traj1.q(1,:),1);
         for k=1:numel(traj1.q(:,1))
             robot.setJointAngles(traj1.q(k,:),1);
-            pause(0.005);
+            pause(0.015);
         end
 
         for k=1:numel(traj2.q(:,1))
             robot.setJointAngles(traj2.q(k,:),1);
-            pause(0.01);
+            pause(0.015);
         end             
-       % keyboard
+       keyboard
 
     end
 

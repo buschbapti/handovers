@@ -79,9 +79,18 @@ try % delete the flag just in case
     delete([storePath '/flagROSfinished.txt']);
 end
 
-mctr = 1; % main loop counter
+
+% left 19
+mctr = 14; % main loop counter
 while 1 % main loop keeps running non-stop    
     tic
+    clear posesFromROS; % this is important when doing iterations!!!
+    
+    fprintf('\n*******************************\n', toc);
+    fprintf('Iter %g.\n', mctr);
+    fprintf('*********************************\n\n\n', toc);
+    
+    
     %  Put the scene back to its original configuration
     % ==========================================
     default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
@@ -89,40 +98,12 @@ while 1 % main loop keeps running non-stop
     
     if run_without_ROS_trigger == 1 % skip the ROS part and generate poses randomly
      
-        if 1 % random generator
-            scale = 1;
-            placeHolderParam.viaPoint.stdPos = scale*[0.5 0.5  0.5];    % meters
-            placeHolderParam.viaPoint.stdRot = scale*d2r([45  45  45]); % radians world coordinates
-            placeHolderParam.handOver.stdPos = scale*[0.01 0.5 0.5];
-            placeHolderParam.handOver.stdRot = scale*d2r([ 0 0 0]);
-            placeHolderParam.deterministic   = 0; % make sure the shift is exact. Otherwise use it as std noise.
-        end
-        if 0 % deterministic placement
-            scale = 1;
-            placeHolderParam.viaPoint.stdPos = scale*[0.0   0   0];    % meters
-            placeHolderParam.viaPoint.stdRot = scale*d2r([0  0    0]); % radians world coordinates
-            placeHolderParam.handOver.stdPos = scale*[0    0.00065    0.0];
-            placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
-            placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
-        end       
+        posesFromROS(1,:)   = [0.737216429048	-0.503644892162	-0.418196349287	0.0996327703676	0.994680140491	-0.0242588465096	-0.00981007382333];
         
-        [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(placeHolderParam);
-        
-        posesFromROS(2,2)=posesFromROS(2,2)+0.25;
-        fprintf('Current REBA poses\n');
-        fprintf('L1  %g %g %g %g %g %g %g\n', posesFromROS(1,:));
-        fprintf('L2  %g %g %g %g %g %g %g\n', posesFromROS(2,:));
-
-        if mod(mctr,2)
-            posesFromROS(3,:) = [1 1 1 1 1 1 1] ; % right handed
-        else
-            posesFromROS(3,:) = [0 0 0 0 0 0 0] ; % left handed
-        end
-
-        if posesFromROS(3,1) == 0
-            posesFromROS(2,:) = mirror_right_as_proxy_for_left_hand(posesFromROS(2,:));
-        end
-        
+       % posesFromROS(1,1)   = posesFromROS(1,1) + 0.0025*randn;
+        posesFromROS(1,2)   = -0.2+0*posesFromROS(1,2) + 0*0.25*randn;
+        posesFromROS        = [posesFromROS; new_grid_right(mctr, 'left')];
+         
     else % run for real. This needs ROS node to be run.        
         ctr = 0;
         % check for the presence of the file flag from ROS
@@ -162,16 +143,68 @@ while 1 % main loop keeps running non-stop
     fprintf('Trajectory generated %g sec.\n', toc);
     fprintf('*********************************\n\n\n', toc);
     mctr=mctr+1;
-    close all;   
+    close all; 
+    
     
 end
 
 
 
 
-
-
-
+% 
+%         if 1 % random generator
+%             scale = 1;
+%             placeHolderParam.viaPoint.stdPos = scale*[0.5 0.5  0.5];    % meters
+%             placeHolderParam.viaPoint.stdRot = scale*d2r([45  45  45]); % radians world coordinates
+%             placeHolderParam.handOver.stdPos = scale*[0.01 0.5 0.5];
+%             placeHolderParam.handOver.stdRot = scale*d2r([ 0 0 0]);
+%             placeHolderParam.deterministic   = 0; % make sure the shift is exact. Otherwise use it as std noise.
+%         end
+%         if 0 % deterministic placement
+%             scale = 1;
+%             placeHolderParam.viaPoint.stdPos = scale*[0.0   0   0];    % meters
+%             placeHolderParam.viaPoint.stdRot = scale*d2r([0  0    0]); % radians world coordinates
+%             placeHolderParam.handOver.stdPos = scale*[0    0.00065    0.0];
+%             placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
+%             placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
+%         end       
+%         
+%           [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(placeHolderParam);
+%         
+%         posesFromROS(2,2)=posesFromROS(2,2)+0.25;
+%         fprintf('Current REBA poses\n');
+%         fprintf('L1  %g %g %g %g %g %g %g\n', posesFromROS(1,:));
+%         fprintf('L2  %g %g %g %g %g %g %g\n', posesFromROS(2,:));
+% 
+%         if mod(mctr,2)
+%             posesFromROS(3,:) = [1 1 1 1 1 1 1] ; % right handed
+%         else
+%             posesFromROS(3,:) = [0 0 0 0 0 0 0] ; % left handed
+%         end
+% 
+%         if posesFromROS(3,1) == 0
+%             posesFromROS(2,:) = mirror_right_as_proxy_for_left_hand(posesFromROS(2,:));
+%         end
+%         
+%         % debug mode        
+%         posesFromROS = [ 
+%         0.737216429048	-0.503644892162	-0.418196349287	0.0996327703676	0.994680140491	-0.0242588465096	-0.00981007382333	
+%         0.768086033018	-0.338878200599	-0.307821495436	0.660934307199	0.379348344541	-0.44204237868	-0.473137623226	
+%         0	0	0	0	0	0	0	
+%         ];
+%     
+%         handoverTune = posesFromROS(2,:);
+%         % move xyz
+%         handoverTune(1:3) =  handoverTune(1:3) + [0.4  0  0.2];
+%         
+%         handoverTune  = changeQuaternionOrder(handoverTune);
+%         handoverTuneT = fromQuaternionToHomog( handoverTune);
+%         handoverTuneT = handoverTuneT*my_trotz(d2r(45));
+%         handoverTuneT = handoverTuneT*my_troty(d2r(-45));
+%         
+%         quat_temp         = Quaternion( handoverTuneT );
+%         posesFromROS(2,:) = [handoverTuneT(1:3,4)' quat_temp.v    quat_temp.s];
+% 
 
 
 
