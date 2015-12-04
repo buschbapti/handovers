@@ -62,7 +62,7 @@ class MatlabBridge:
         os.remove(self.traj1_file)
         os.remove(self.traj2_file)
 
-    def write_poses_in_file(self, handOverLocation, viaPointLocation=None):
+    def write_poses_in_file(self, handOverLocation, viaPointLocation=None, side=0):
         def convert_to_string(pose):
             # create the string of the pose to write in the textfile
             pose_str = ''
@@ -78,6 +78,8 @@ class MatlabBridge:
         string_poses = convert_to_string(viaPointLocation)
         # create the string for handover
         string_poses += convert_to_string(handOverLocation)
+        # add the row that define the side
+        string_poses += convert_to_string([[side,side,side],[side,side,side,side]])
         # write the string to the file
         with open(self.poses_file, 'w') as f:
             f.write(string_poses)
@@ -139,7 +141,7 @@ class MatlabBridge:
         handOverLocation = transformations.pose_to_list(req.hand_over_location)
         objectLocation = transformations.pose_to_list(req.object_location)
         # query the bridge for the trajectory
-        self.write_poses_in_file(handOverLocation, objectLocation)
+        self.write_poses_in_file(handOverLocation, objectLocation, side=req.hand_to_handover)
         # wait for the response
         traj1, traj2 = self.read_trajectory_files(req.current_state)
         # return the calculated trajectory

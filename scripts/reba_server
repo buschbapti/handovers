@@ -11,8 +11,8 @@ import sys
 class RebaServer:
     def __init__(self, rate):
         self.tf_hand = []
-        self.tf_hand.append(rospy.get_param('/reba/hand_over_location/right'))
         self.tf_hand.append(rospy.get_param('/reba/hand_over_location/left'))
+        self.tf_hand.append(rospy.get_param('/reba/hand_over_location/right'))
         self.tfl = tf.TransformListener()
         self.tfb = tf.TransformBroadcaster()
         self.rate = rospy.Rate(rate)
@@ -22,7 +22,7 @@ class RebaServer:
     def calculate_hand_over(self, tf_hip, side=0):
         # multiply the two tf
         tf_hand_over = transformations.multiply_transform(tf_hip, self.tf_hand[side])
-        # transform it into vrep format
+        # transform it into vrep format by a pi/2 y rotation
         tf_vrep = ([0.,0.,0.],[0.,0.70710678,0.,0.70710678])
         tf_hand_over = transformations.multiply_transform(tf_hand_over, tf_vrep)
         with self.lock:
@@ -32,11 +32,12 @@ class RebaServer:
     def cb_reba_request_received(self, reba_pose_req):
         # read tf from VREP to hip
         tf_hip = transformations.pose_to_list(reba_pose_req.hip_pose)
+        side = reba_pose_req.prefered_hand_to_handover
         # calculate the hand_over pose
-        self.calculate_hand_over(tf_hip)
+        self.calculate_hand_over(tf_hip, side=side)
         # create the Pose response
         pose = transformations.list_to_pose(self.tf_hand_over).pose
-        return RebaPoseResponse(hand_over_location=pose)
+        return RebaPoseResponse(hand_over_location=pose, hand_to_handover=side)
 
     def publish_handover(self):
         # publish the transformation

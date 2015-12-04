@@ -1,6 +1,7 @@
 geometry_msgs/Pose hand_over_location
 geometry_msgs/Pose object_location
 sensor_msgs/JointState current_state
+uint8 hand_to_handover
 ---
 trajectory_msgs/JointTrajectory trajectory_to_object
 trajectory_msgs/JointTrajectory trajectory_to_handover

@@ -1,3 +1,5 @@
 geometry_msgs/Pose hip_pose
+uint8 prefered_hand_to_handover
 ---
 geometry_msgs/Pose hand_over_location
+uint8 hand_to_handover

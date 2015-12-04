@@ -70,21 +70,29 @@ class ComfortPoseAS(object):
             rospy.logerr(e.message)
             return self.server.set_aborted()
 
+        # get user prefered side for handover
+        prefered_side = goal.prefered_hand_to_handover
 
         self.feedback.state = RebaHandOverFeedback.STATE_COMPUTING_REBA
         self.server.publish_feedback(self.feedback)
 
+        # compute for message to get the REBA handover pose
         reba_request = RebaPoseRequest()
         reba_request.hip_pose = transformations.list_to_pose(hip_pose).pose
-        hand_over_location = self.reba_service(reba_request).hand_over_location
+        reba_request.prefered_hand_to_handover = prefered_side
+        res = self.reba_service(reba_request)
+        hand_over_location = res.hand_over_location
+        handover_side = res.hand_to_handover
 
         self.feedback.state = RebaHandOverFeedback.STATE_COMPUTING_TRAJECTORIES
         self.server.publish_feedback(self.feedback)
 
+        # compute for message to get the robot trajectories from Matlab
         traj_request = TrajectoryFromRebaRequest()
         traj_request.object_location = transformations.list_to_pose(object_pose).pose
         traj_request.hand_over_location = hand_over_location
         traj_request.current_state = self.arm.get_current_state().joint_state
+        traj_request.hand_to_handover = handover_side
         trajectories = self.traj_service(traj_request)
 
         trajectory_to_object = trajectories.trajectory_to_object
