@@ -6,13 +6,13 @@ add_required_paths();
 if 1 % table
     typeOfDemoFolderName = 'interaction_data_plate_on_table';   
     keyName{1} = 'table1_20151130_121146';
-    keyName{2} = 'table2reba';    
+    keyName{2} = 'table2rebaLEFT';    
 end
 
-for REBAposeNum = 2:40
+for REBAposeNum = 19:40
     
     close all;
-    
+    clear posesFromROS;
 
     % Tune parameters
     demo.fileLocation = ['../demonstration_code_and_postprocessing/' typeOfDemoFolderName '/post_processed_data/set1.mat'];
@@ -26,10 +26,14 @@ for REBAposeNum = 2:40
     % Initialize vrep object.
     vrepObj = Vrep( );
 
+    
     % Initialize human demonstrator A (the human that will be improved by REBA)
-    humanA = VrepAgent(vrepObj, 'human');
-    humanA.getDummyHandlesFromVREP({'Dummy_tip_humanA_R'});
+    humanA_R = VrepAgent(vrepObj, 'humanAR');
+    humanA_R.getDummyHandlesFromVREP({'Dummy_tip_humanA_R'});
 
+    humanA_L = VrepAgent(vrepObj, 'humanAL');
+    humanA_L.getDummyHandlesFromVREP({'Dummy_tip_humanA_L'});
+    
     % Initialize human demonstrator B (the trajectory that Darias will use)
     humanB = VrepAgent(vrepObj, 'human');
     humanB.getDummyHandlesFromVREP({'Dummy_tip_humanB_R'});
@@ -57,7 +61,7 @@ for REBAposeNum = 2:40
     clear agentViaPoint;
     d_handover = VrepAgent(vrepObj, 'humanFinalHandoverPosition');
     d_handover.getDummyHandlesFromVREP({'handoverPosition'});
-    [~,~, humanA.Treba] = d_handover.readGenericCoordinates(d_handover.getIndex('handoverPosition'));
+    %[~,~, humanA.Treba] = d_handover.readGenericCoordinates(d_handover.getIndex('handoverPosition'));
 
     default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
 
@@ -68,20 +72,33 @@ for REBAposeNum = 2:40
     placeHolderParam.handOver.stdPos = scale(2)*[-0.2  0.2  0];
     placeHolderParam.handOver.stdRot = scale(2)*d2r([ 0 0  0]);
     placeHolderParam.deterministic = 1; % make sure the shift is exact. Otherwise use it as std noise.
-    [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(d_viaPoint, d_handover, placeHolderParam);
+    [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(placeHolderParam);
 
     % Get real reba pose
     if ~isempty(REBAposeNum)
-        posesFromROS(2,:) = getREBAPose(REBAposeNum);
+        %posesFromROS(2,:) = getREBAPose(REBAposeNum);
+        posesFromROS(2:3,:) = new_grid_right(REBAposeNum, 'left');
     end
     posesMatlabFormat = changeQuaternionOrder(posesFromROS);
 
     toolPos.T = fromQuaternionToHomog( posesMatlabFormat(1,:) );
     d_viaPoint.sendTargetCartesianCoordinates(toolPos.T(1:3,4), tr2rpy(toolPos.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);    
 
-    humanA.Treba = fromQuaternionToHomog(posesMatlabFormat(2,:));    
-    d_handover.sendTargetCartesianCoordinates(humanA.Treba(1:3,4), tr2rpy(humanA.Treba), d_handover.getHandle('handoverPosition'), 1);
-    humanA.sendTargetCartesianCoordinates(humanA.Treba(1:3,4), tr2rpy(humanA.Treba), humanA.getHandle('Dummy_tip_humanA_R'), 1); 
+    
+    if posesFromROS(3,1) == 1 % right handed
+        humanHand = humanA_R;
+        humanA_L.sendTargetCartesianCoordinates([1 -1 -1.2], [0 0 0], humanA_L.getHandle('Dummy_tip_humanA_L'), 1);
+        dummyHandSide = 'Dummy_tip_humanA_R';
+    else
+        humanHand = humanA_L;
+        humanA_R.sendTargetCartesianCoordinates([1 -0.8 -1.2], [0 0 0], humanA_R.getHandle('Dummy_tip_humanA_R'), 1);
+        dummyHandSide = 'Dummy_tip_humanA_L';
+    end
+    
+    
+    humanHand.Treba = fromQuaternionToHomog(posesMatlabFormat(2,:)); 
+    d_handover.sendTargetCartesianCoordinates(humanHand.Treba(1:3,4), tr2rpy(humanHand.Treba), d_handover.getHandle('handoverPosition'), 1);
+    humanHand.sendTargetCartesianCoordinates(humanHand.Treba(1:3,4), tr2rpy(humanHand.Treba), humanHand.getHandle(dummyHandSide), 1);     
 
     %%
     % get current position as rest posture
@@ -101,7 +118,7 @@ for REBAposeNum = 2:40
     human.getDummyHandlesFromVREP( {'human_head'});
 
     % load natural demonstrations and return it in two parts, before and after grasping
-    [demo, viaPoint, hworkspc]   = load_interaction(demo, toolPos.T, humanA.Treba);
+    [demo, viaPoint, hworkspc]   = load_interaction(demo, toolPos.T, humanHand.Treba);
     param.hfig.hworkspc = hworkspc;
     view([1 -1 2]);
     set_fig_position([0.496 0.05 0.507 0.95]);
@@ -178,8 +195,8 @@ for REBAposeNum = 2:40
     p = 2;
 
     % move human hand to handover position
-    humanA.sendTargetCartesianCoordinates(humanA.Treba(1:3,4), tr2rpy(humanA.Treba), humanA.getHandle('Dummy_tip_humanA_R'), 1);
-
+    humanHand.sendTargetCartesianCoordinates(humanHand.Treba(1:3,4), tr2rpy(humanHand.Treba), humanHand.getHandle(dummyHandSide), 1);     
+    
     % set the rest posture as the beginning of the grasp approach
     robot.TrestPosture = demo.part{1}.vpAppr.T;
     robot.sendTargetCartesianCoordinates(robot.TrestPosture(1:3,4), tr2rpy(robot.TrestPosture), robot.getHandle('Dummy_target'), 1);

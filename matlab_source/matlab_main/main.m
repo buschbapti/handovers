@@ -6,19 +6,18 @@ drawnow;
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flag is zero, it will wait for a real pose in 
 % posesFromROS.txt and for the flag  flagROSfinished.txt
-run_without_ROS_trigger = 0;
+run_without_ROS_trigger = 1;
 
-paramGeneral.initialDT = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
+paramGeneral.initialDT  = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
 paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
-paramGeneral.tFinal    = [10 10]; % duration of each part of the trajectory
-paramGeneral.nTraj     = 150;   % number of steps in each trajectory
-
+paramGeneral.tFinal     = [10 10]; % duration of each part of the trajectory
+paramGeneral.nTraj      = 150;   % number of steps in each trajectory
 
 % Speed up traj. generation by bypassing vrep.
 paramGeneral.speedUpWithoutFKChecking =  1 ;
 
 paramGeneral.debugMode = 0;
-paramGeneral.checkFinalSolution = 0; % this will stop the simulation and run 
+paramGeneral.checkFinalSolution = 1; % this will stop the simulation and run 
                                      % the FK on the smoothed final solution
                                      
 paramGeneral.dmpExtendTimeFactor = 1.1;    
@@ -100,10 +99,11 @@ while 1 % main loop keeps running non-stop
      
         posesFromROS(1,:)   = [0.737216429048	-0.503644892162	-0.418196349287	0.0996327703676	0.994680140491	-0.0242588465096	-0.00981007382333];
         
-       % posesFromROS(1,1)   = posesFromROS(1,1) + 0.0025*randn;
+      % posesFromROS(1,1)   = posesFromROS(1,1) + 0.0025*randn;
         posesFromROS(1,2)   = -0.2+0*posesFromROS(1,2) + 0*0.25*randn;
-        posesFromROS        = [posesFromROS; new_grid_right(mctr, 'left')];
-         
+        posesFromROS        = [posesFromROS; new_grid_right(mctr, 'left')];        
+        posesFromROS(2,1)   =  posesFromROS(2,1) + 0.2;
+        
     else % run for real. This needs ROS node to be run.        
         ctr = 0;
         % check for the presence of the file flag from ROS
@@ -142,69 +142,12 @@ while 1 % main loop keeps running non-stop
     fprintf('\n*******************************\n', toc);
     fprintf('Trajectory generated %g sec.\n', toc);
     fprintf('*********************************\n\n\n', toc);
-    mctr=mctr+1;
+    mctr = mctr+1;
     close all; 
     
     
 end
 
-
-
-
-% 
-%         if 1 % random generator
-%             scale = 1;
-%             placeHolderParam.viaPoint.stdPos = scale*[0.5 0.5  0.5];    % meters
-%             placeHolderParam.viaPoint.stdRot = scale*d2r([45  45  45]); % radians world coordinates
-%             placeHolderParam.handOver.stdPos = scale*[0.01 0.5 0.5];
-%             placeHolderParam.handOver.stdRot = scale*d2r([ 0 0 0]);
-%             placeHolderParam.deterministic   = 0; % make sure the shift is exact. Otherwise use it as std noise.
-%         end
-%         if 0 % deterministic placement
-%             scale = 1;
-%             placeHolderParam.viaPoint.stdPos = scale*[0.0   0   0];    % meters
-%             placeHolderParam.viaPoint.stdRot = scale*d2r([0  0    0]); % radians world coordinates
-%             placeHolderParam.handOver.stdPos = scale*[0    0.00065    0.0];
-%             placeHolderParam.handOver.stdRot = scale*d2r([ 0  0  +0]);
-%             placeHolderParam.deterministic   = 1; % make sure the shift is exact. Otherwise use it as std noise.
-%         end       
-%         
-%           [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(placeHolderParam);
-%         
-%         posesFromROS(2,2)=posesFromROS(2,2)+0.25;
-%         fprintf('Current REBA poses\n');
-%         fprintf('L1  %g %g %g %g %g %g %g\n', posesFromROS(1,:));
-%         fprintf('L2  %g %g %g %g %g %g %g\n', posesFromROS(2,:));
-% 
-%         if mod(mctr,2)
-%             posesFromROS(3,:) = [1 1 1 1 1 1 1] ; % right handed
-%         else
-%             posesFromROS(3,:) = [0 0 0 0 0 0 0] ; % left handed
-%         end
-% 
-%         if posesFromROS(3,1) == 0
-%             posesFromROS(2,:) = mirror_right_as_proxy_for_left_hand(posesFromROS(2,:));
-%         end
-%         
-%         % debug mode        
-%         posesFromROS = [ 
-%         0.737216429048	-0.503644892162	-0.418196349287	0.0996327703676	0.994680140491	-0.0242588465096	-0.00981007382333	
-%         0.768086033018	-0.338878200599	-0.307821495436	0.660934307199	0.379348344541	-0.44204237868	-0.473137623226	
-%         0	0	0	0	0	0	0	
-%         ];
-%     
-%         handoverTune = posesFromROS(2,:);
-%         % move xyz
-%         handoverTune(1:3) =  handoverTune(1:3) + [0.4  0  0.2];
-%         
-%         handoverTune  = changeQuaternionOrder(handoverTune);
-%         handoverTuneT = fromQuaternionToHomog( handoverTune);
-%         handoverTuneT = handoverTuneT*my_trotz(d2r(45));
-%         handoverTuneT = handoverTuneT*my_troty(d2r(-45));
-%         
-%         quat_temp         = Quaternion( handoverTuneT );
-%         posesFromROS(2,:) = [handoverTuneT(1:3,4)' quat_temp.v    quat_temp.s];
-% 
 
 
 

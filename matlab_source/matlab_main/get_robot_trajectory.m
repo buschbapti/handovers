@@ -2,13 +2,11 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
                             paramGeneral, lookupTraj1, lookupTraj2, soundPlayer)
 
     % 
-    %[posesMatlabFormat] = adapt_positions(posesMatlabFormat, -30);
+    %[posesMatlabFormat]   = adapt_positions(posesMatlabFormat, 0*30);
          
     [viaPoint, rebaHand ] = what_to_update(posesMatlabFormat, d_viaPoint, d_handover, humanA);        
 
     if ~isempty(viaPoint)
-      %  play_sound(soundPlayer, 'step_one');
-
         traj1initGuess = search_lookupTable(lookupTraj1, viaPoint.T);
 
         % try decrease size to make FK faster
@@ -42,9 +40,6 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
 
         d_viaPoint.sendTargetCartesianCoordinates(viaPoint.T(1:3,4), tr2rpy(viaPoint.T), d_viaPoint.getHandle('Dummy_viaPoint_table'), 1);    
 
-       % save('currentViaPointSolution.mat', 'T_appr1', 'traj1dmpWithGrasp', 'viaPoint');
-    else
-       % load('currentViaPointSolution.mat');
     end        
 
     if ~isempty(rebaHand)
