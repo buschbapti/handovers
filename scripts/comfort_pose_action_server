@@ -146,6 +146,9 @@ class ComfortPoseAS(object):
         rospy.loginfo('Handover succeeded')
         self.server.set_succeeded(self.result)
 
+        rospy.sleep(1)
+        self.go_to_home_pose()
+
 if __name__ == '__main__':
     rospy.init_node('comfort_pose_action_server')
     ComfortPoseAS('/reba/comfort_pose_action_server', 'right', (sys.argv[1]=='True'))
