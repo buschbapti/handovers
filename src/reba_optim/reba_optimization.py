@@ -6,7 +6,7 @@ from .reba_assess import RebaAssess
 from scipy.optimize import minimize
 import time
 
-class RebaOptimization:
+class RebaOptimization(object):
     def __init__(self, orientation, safety_dist, sum_optim=False, save_score=False, cost_factors=None):
         if cost_factors is None:
             self.cost_factors = [1, 1, 1]
