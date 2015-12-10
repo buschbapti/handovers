@@ -43,9 +43,13 @@ class RebaOptimization(object):
                 cost += abs(p - self.safety_dist[i][1])
         return cost
 
-    def cost_function(self, q, side=0):
+    def cost_function(self, q, side=0, fixed_joints={}):
+        joints = q
+        # replace the value of fixed joints
+        for key, value in fixed_joints.iteritems():
+            joints[self.model.joint_names.index(key)] = value
         # first get the active joints
-        active = self.get_active_joints_value(q, side)
+        active = self.get_active_joints_value(joints, side)
         # calculate the forward kinematic
         T = self.model.forward_kinematic(active, side)
         # calculate the cost based on safety distance
@@ -53,14 +57,17 @@ class RebaOptimization(object):
         # calculate cost based on desired orientation
         C_rot = (T[:-1,:-1] - self.orientation).norm()
         # convert joints to REBA norms
-        reba_data = self.reba.from_joints_to_reba(q, self.model.joint_names)
+        reba_data = self.reba.from_joints_to_reba(joints, self.model.joint_names)
         # calculate REBA score
         C_reba = self.reba.reba_optim(reba_data)
         # return the final score
         return self.cost_factors[0]*C_reba + self.cost_factors[1]*C_safe + self.cost_factors[2]*C_rot
 
-    def optimize_posture(self, joints, side=0, var=0.1):
+    def optimize_posture(self, joints, side=0, var=0.1, fixed_joints={}):
         joint_limits = self.model.joint_limits()['limits']
         # call optimization from scipy
-        res = minimize(self.cost_function, joints, args=(side, ), method='L-BFGS-B', bounds=joint_limits, options={'eps':var})
+        res = minimize(self.cost_function, joints, args=(side, fixed_joints ), method='L-BFGS-B', bounds=joint_limits, options={'eps':var})
+        # replace the value of fixed joints
+        for key, value in fixed_joints.iteritems():
+            res.x[self.model.joint_names.index(key)] = value
         return res
