@@ -3,13 +3,18 @@
 clear; clc; close all; dbstop if error;
 add_required_paths();
 
+
+handOverSide = 'right';
+
 if 1 % table
     typeOfDemoFolderName = 'interaction_data_plate_on_table';   
     keyName{1} = 'table1_20151130_121146';
-    keyName{2} = 'table2rebaLEFT';    
+    keyName{2} = ['table2reba_' handOverSide ];    
 end
 
-for REBAposeNum = 19:40
+
+
+for REBAposeNum = 1:2:40
     
     close all;
     clear posesFromROS;
@@ -66,9 +71,9 @@ for REBAposeNum = 19:40
     default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
 
     %% Shake the positions to optimize new trajectories
-    scale = [0 0] ;
-    placeHolderParam.viaPoint.stdPos = scale(1)*[-0.1 0.1  -0.12];    % meters
-    placeHolderParam.viaPoint.stdRot = scale(1)*d2r([10  30  -50]); % radians world coordinates
+    scale = [1 0 ] ;
+    placeHolderParam.viaPoint.stdPos = scale(1)*[0 0 0];    % meters
+    placeHolderParam.viaPoint.stdRot = scale(1)*d2r([0 0 -45]); % radians world coordinates
     placeHolderParam.handOver.stdPos = scale(2)*[-0.2  0.2  0];
     placeHolderParam.handOver.stdRot = scale(2)*d2r([ 0 0  0]);
     placeHolderParam.deterministic = 1; % make sure the shift is exact. Otherwise use it as std noise.
@@ -77,7 +82,8 @@ for REBAposeNum = 19:40
     % Get real reba pose
     if ~isempty(REBAposeNum)
         %posesFromROS(2,:) = getREBAPose(REBAposeNum);
-        posesFromROS(2:3,:) = new_grid_right(REBAposeNum, 'left');
+        %posesFromROS(2:3,:) = new_grid_right(REBAposeNum, 'left');
+        posesFromROS(2:3,:) = reba_grid_left_right_20151211(REBAposeNum, handOverSide);
     end
     posesMatlabFormat = changeQuaternionOrder(posesFromROS);
 
@@ -239,7 +245,7 @@ for REBAposeNum = 19:40
     solTraj2.sol     = traj2dmpSmoothStart;
     solTraj2.vpAppr  = demo.part{p}.vpAppr;
     solTraj2.vpGrasp = demo.part{p}.vpGrasp;
-    save(['./lookupTraj2/' keyName2 '.mat'], 'solTraj2');
+    save(['./lookupTraj2_LR/' keyName2 '.mat'], 'solTraj2');
 
 end
 

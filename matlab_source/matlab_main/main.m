@@ -66,9 +66,16 @@ d_viaPoint.getDummyHandlesFromVREP({'Dummy_viaPoint_table'});
 d_handover = VrepAgent(vrepObj, 'humanFinalHandoverPosition');
 d_handover.getDummyHandlesFromVREP({'handoverPosition'});
 
-
 lookupTraj1 = load_tables('lookupTraj1');
-lookupTraj2 = load_tables('lookupTraj2');
+
+if 0 % new method uses left right trajectories
+    lookupTraj2R = load_tables('lookupTraj2'); % old grid with right handovers only
+    lookupTraj2.right = lookupTraj2R;
+    lookupTraj2L = load_tables_L(); % new grid. Only accounts for traj2 left side
+    lookupTraj2.left = lookupTraj2L;
+else % previous method, uses only right trajectories
+    lookupTraj2 = load_tables('lookupTraj2');
+end
 
 default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
 
@@ -80,7 +87,7 @@ end
 
 
 % left 19
-mctr = 14; % main loop counter
+mctr = 37; % main loop counter
 while 1 % main loop keeps running non-stop    
     tic
     clear posesFromROS; % this is important when doing iterations!!!
@@ -98,12 +105,11 @@ while 1 % main loop keeps running non-stop
     if run_without_ROS_trigger == 1 % skip the ROS part and generate poses randomly
      
         posesFromROS(1,:)   = [0.737216429048	-0.503644892162	-0.418196349287	0.0996327703676	0.994680140491	-0.0242588465096	-0.00981007382333];
-        
-      % posesFromROS(1,1)   = posesFromROS(1,1) + 0.0025*randn;
         posesFromROS(1,2)   = -0.2+0*posesFromROS(1,2) + 0*0.25*randn;
-        posesFromROS        = [posesFromROS; new_grid_right(mctr, 'left')];        
-        posesFromROS(2,1)   =  posesFromROS(2,1) + 0.2;
-        
+        posesFromROS        = [posesFromROS; 
+                              reba_grid_left_right_20151211(mctr, 'left')];  
+                          
+        posesFromROS(2,3)   =  posesFromROS(2,3) +0.000;
     else % run for real. This needs ROS node to be run.        
         ctr = 0;
         % check for the presence of the file flag from ROS
@@ -127,22 +133,32 @@ while 1 % main loop keeps running non-stop
     if posesFromROS(3,1) == 1 % right handed
         humanHand = humanA_R;
         humanA_L.sendTargetCartesianCoordinates([1 -1 -1.2], [0 0 0], humanA_L.getHandle('Dummy_tip_humanA_L'), 1);
-    else
+        if isfield(lookupTraj2, 'right')
+            lookupTraj2Final = lookupTraj2.right;
+        else % if there is no library for left handover, use the right one
+            lookupTraj2Final = lookupTraj2;
+        end        
+    else % left hand
         humanHand = humanA_L;
         humanA_R.sendTargetCartesianCoordinates([1 -0.8 -1.2], [0 0 0], humanA_R.getHandle('Dummy_tip_humanA_R'), 1);
+        if isfield(lookupTraj2, 'left')
+            lookupTraj2Final = lookupTraj2.left;
+        else % if there is no library for left handover, use the right one
+            lookupTraj2Final = lookupTraj2;
+        end
     end
 
     % main optimization code runs here
     fprintf('Wait while trajectory is being generated...\n');
     [traj1, traj2] = get_robot_trajectory(posesMatlabFormat, robot, d_viaPoint, ...
                                           d_handover, humanHand, paramGeneral,...
-                                          lookupTraj1, lookupTraj2, soundPlayer);
+                                          lookupTraj1, lookupTraj2Final, soundPlayer);
     
     write_trajectory_file(storePath, traj1, traj2, paramGeneral.nTraj, paramGeneral.initialDT);
     fprintf('\n*******************************\n', toc);
     fprintf('Trajectory generated %g sec.\n', toc);
     fprintf('*********************************\n\n\n', toc);
-    mctr = mctr+1;
+    mctr = mctr+3;
     close all; 
     
     

@@ -3,8 +3,9 @@ function [posesMatlabFormat] = adapt_positions(posesMatlabFormat, adjustAngle)
 
     rebaT = fromQuaternionToHomog( posesMatlabFormat(2,:));
     %rebaT2  = rebaT*my_troty( d2r(adjustAngle) );
-    rebaT2  = rebaT*my_trotz( d2r(adjustAngle) );
-
+    % rebaT2  = rebaT*my_trotz( d2r(adjustAngle) );
+    rebaT2  = rebaT*my_trotx( d2r(adjustAngle) );
+ 
     quat_temp = Quaternion( rebaT2(1:3,1:3));
     
     % use it in normal matlab order

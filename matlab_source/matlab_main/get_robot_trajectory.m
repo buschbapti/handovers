@@ -2,7 +2,7 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
                             paramGeneral, lookupTraj1, lookupTraj2, soundPlayer)
 
     % 
-    %[posesMatlabFormat]   = adapt_positions(posesMatlabFormat, 0*30);
+    %[posesMatlabFormat]   = adapt_positions(posesMatlabFormat, 0);
          
     [viaPoint, rebaHand ] = what_to_update(posesMatlabFormat, d_viaPoint, d_handover, humanA);        
 
