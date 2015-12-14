@@ -3,7 +3,7 @@ function [rosPositions, viaPoint, reba] = placeholder_get_positions(placeHolderP
 
     % Take original poses from Baptiste as initial starting points
     posesFromROS(1,:) = [        
-        0.668624682802	-0.376531205034	-0.418522915653	0.875912087128	0.482409229925	-0.00383223594505	-0.00668314856413	
+        0.5	-0	-0.418522915653	0.875912087128	0.482409229925	-0.00383223594505	-0.00668314856413	
     ];
 
     posesFromROS(2,:) = getREBAPose(20); % select one of the poses

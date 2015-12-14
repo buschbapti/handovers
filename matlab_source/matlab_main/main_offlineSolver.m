@@ -8,7 +8,7 @@ if 1 % table
     keyName{1} = 'table1_20151111_113045';
     keyName{2} = 'table2_20151111_114051';
     keyName{1} = 'table1_20151130_121146';
-    keyName{2} = 'table2_20151130_115714';    
+    keyName{2} = 'table2reba_left_20151211_235606';    
 end
 
 REBAposeNum = []; % the number represents the pose in the table entry (getREBAPose.m)
@@ -69,7 +69,7 @@ if 1
     placeHolderParam.handOver.stdPos = scale(2)*[-0.2  0.2  0];
     placeHolderParam.handOver.stdRot = scale(2)*d2r([ 0 0  0]);
     placeHolderParam.deterministic = 1; % make sure the shift is exact. Otherwise use it as std noise.
-    [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(d_viaPoint, d_handover, placeHolderParam);
+    [posesFromROS, tmpvp, tmpreba] = placeholder_get_positions(placeHolderParam);
 
     % Get real reba pose
     if ~isempty(REBAposeNum)
@@ -259,7 +259,11 @@ traj2dmpWithGrasp.T = cat(3, removeObject, traj2dmpSmoothStart.T);
 
 robot.backToRestPosture;
 replay_solution(traj2dmpWithGrasp.T, robot, [], [], 0.01, 1); 
-                   
+               
+
+
+break
+
 solTraj2.sol     = traj2dmpSmoothStart;
 solTraj2.vpAppr  = demo.part{p}.vpAppr;
 solTraj2.vpGrasp = demo.part{p}.vpGrasp;

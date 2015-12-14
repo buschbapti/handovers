@@ -53,7 +53,7 @@ while mctr~=41 % main loop keeps running non-stop
     % ==========================================
     default_dummy_positions(robot, d_viaPoint, d_handover, 1); % return dummies to original location
     posesFromROS(1,:)   = [0.737216429048	-0.503644892162	-0.418196349287	0.0996327703676	0.994680140491	-0.0242588465096	-0.00981007382333];
-    posesFromROS = [posesFromROS; new_grid_right(mctr, 'left')];
+    posesFromROS = [posesFromROS; reba_grid_left_right_20151211(mctr, 'right')];
  
     posesMatlabFormat = changeQuaternionOrder(posesFromROS);
     

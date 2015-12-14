@@ -50,11 +50,8 @@ function lookupTraj = load_tables(folderName)
         %REBA: 0.629141532883	-0.177461599313	-0.109639630416	0.737865791191	-0.186749523442	-0.596509116497	0.2546675551	
         %load([folder '/table2reba_20151130_161153.mat']);  % good
         
-%         tmp.right = lookupTraj;
-%         tmp.left  = [];
-% 
-%         clear lookupTraj;
-%         lookupTraj = tmp;
+        
+        
         
     end
 
