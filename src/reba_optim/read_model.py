@@ -9,12 +9,15 @@ class ReadModel:
         # get the lengths of the human
         self.nb_joints = 10
         self.lengths = rospy.get_param('/kinect/human_lengths')
+        self.end_effectors = []
+        self.joint_names = []
         self.init_joint_names()
         self.from_model_to_transformations()
 
     def init_joint_names(self):
         # create the list of all joints byt appending first spherical joints
-        self.joint_names = []
+        self.end_effectors.append('right_hand')
+        self.end_effectors.append('left_hand')
         for i in range(3):
             self.joint_names.append('spine_'+str(i))
             self.joint_names.append('neck_'+str(i))
@@ -79,14 +82,15 @@ class ReadModel:
         self.chains.append(kinematic_chain('left'))
 
     def forward_kinematic(self, joints, side=0):
-        T = eye(4)
-        for i in range(len(self.chains[side])-1):
+        T = []
+        T.append(self.chains[side][0].subs('t'+str(0), joints[0]).evalf())
+        for i in range(1,len(self.chains[side])-1):
             # evaluate the transformation matrix with the corresponding joint value
             temp = self.chains[side][i].subs('t'+str(i), joints[i]).evalf()
             # postmultiply the chain
-            T = T*temp
+            T.append(T[i-1]*temp)
         # multiply with the transformation to the end-effector
-        T = T*self.chains[side][-1]
+        T.append(T[-1]*self.chains[side][-1])
         return T
                 
     def joint_limits(self):
