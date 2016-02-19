@@ -10,7 +10,7 @@ run_without_ROS_trigger = 0;
 
 paramGeneral.initialDT  = 0.5;  % seconds to wait at the first trajectory state, such that Baxter does not jump.
 paramGeneral.offsetGripper_humanHand = 0.05 ; % in meters. How close the gripper should get to the hand during the handover.
-paramGeneral.tFinal     = [10 10]; % duration of each part of the trajectory
+paramGeneral.tFinal     = [7 13]; % duration of each part of the trajectory
 paramGeneral.nTraj      = 150;   % number of steps in each trajectory
 
 % Speed up traj. generation by bypassing vrep.
@@ -123,6 +123,8 @@ while 1 % main loop keeps running non-stop
         fprintf('\n\nROS poses acquired.\n');
         pause(0.1);
         load([storePath '/posesFromROS.txt']);
+        
+        posesFromROS(2,3)   =  posesFromROS(2,3) + 0.02;
     end
         
     fprintf('Poses from ROS received\n');
@@ -154,11 +156,14 @@ while 1 % main loop keeps running non-stop
                                           d_handover, humanHand, paramGeneral,...
                                           lookupTraj1, lookupTraj2Final, soundPlayer);
     
-    write_trajectory_file(storePath, traj1, traj2, paramGeneral.nTraj, paramGeneral.initialDT);
-    fprintf('\n*******************************\n', toc);
-    fprintf('Trajectory generated %g sec.\n', toc);
-    fprintf('*********************************\n\n\n', toc);
-    mctr = mctr+3;
+    % skip if solution does not right in vrep
+    if 1 % ~isempty(traj1)
+        write_trajectory_file(storePath, traj1, traj2, paramGeneral.nTraj, paramGeneral.initialDT);
+        fprintf('\n*******************************\n', toc);
+        fprintf('Trajectory generated %g sec.\n', toc);
+        fprintf('*********************************\n\n\n', toc);
+    end
+    mctr = mctr+3;        
     close all; 
     
     

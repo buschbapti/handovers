@@ -11,6 +11,7 @@ from actionlib import SimpleActionServer
 from reba_optim.msg import RebaHandOverAction, RebaHandOverResult, RebaHandOverFeedback
 from reba_optim.srv import TrajectoryFromReba, RebaPose, RebaPoseRequest, TrajectoryFromRebaRequest
 import sys
+import os
 
 class ComfortPoseAS(object):
     def __init__(self, name, side, display_only=False):
@@ -137,7 +138,10 @@ class ComfortPoseAS(object):
         # Wait for the human to grasp
         self.feedback.state = RebaHandOverFeedback.STATE_WAITING_HUMAN_GRASP
         self.server.publish_feedback(self.feedback)
-        self.arm.wait_for_human_grasp(treshold=1.5)
+
+        os.system('beep')
+        
+        self.arm.wait_for_human_grasp(threshold=1.2)
         grasp_success = self.arm.open()
         if not grasp_success:
             rospy.logerr("Delivery failed during execution")

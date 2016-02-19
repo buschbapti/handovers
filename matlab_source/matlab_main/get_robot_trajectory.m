@@ -122,9 +122,35 @@ function [traj1_, traj2_] = get_robot_trajectory(posesMatlabFormat, robot, d_via
 
         for k=1:numel(traj2.q(:,1))
             robot.setJointAngles(traj2.q(k,:),1);
-            pause(0.015);
+            pause(0.1);
         end             
-       keyboard
+        
+        keyboard
+        
+%         % if solution does not rigth the user skip it
+%         finishWhile = 0;
+%         while finishWhile == 0
+%             
+%             fprintf('1: run the solution\n2: replay solution\n3: cancel the solution\n')
+%             userIn = input('your choice: ');
+% 
+%             if userIn == 1
+%                 finishWhile = 1;
+%             end            
+%             if userIn == 2
+%                 for k=1:numel(traj2.q(:,1))
+%                     robot.setJointAngles(traj2.q(k,:),1);
+%                     pause(0.1);
+%                 end                             
+%                 %disp('userIn')
+%                 finishWhile = 0;
+%             end
+%             
+%             if userIn == 3
+%                 traj1_ = []; traj2_ = [];
+%                 finishWhile = 1;
+%             end                        
+%         end
 
     end
 
