@@ -1,7 +1,6 @@
 from sympy import *
 import rospy
 from kinect_skeleton_publisher.joint_transformations import *
-from sympy import *
 import xmltodict
 
 class ReadModel:

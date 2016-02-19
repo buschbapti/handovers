@@ -36,7 +36,7 @@ class RebaOptimization(object):
     def safety_cost(self, T):
         cost = 0
         for i in range(3):
-            p = Float(T[i,-1])
+            p = Float(T[i, -1])
             if p < self.safety_dist[i][0]:
                 cost += abs(p - self.safety_dist[i][0])
             elif p > self.safety_dist[i][1]:
@@ -55,11 +55,11 @@ class RebaOptimization(object):
         # calculate the cost based on safety distance
         C_safe = self.safety_cost(T)
         # calculate cost based on desired orientation
-        C_rot = (T[:-1,:-1] - self.orientation).norm()
+        C_rot = (T[:-1, :-1] - self.orientation).norm()
         # convert joints to REBA norms
         reba_data = self.reba.from_joints_to_reba(joints, self.model.joint_names)
         # calculate REBA score
-        C_reba = self.reba.reba_optim(reba_data)
+        C_reba = self.reba.reba_assess(reba_data)
         # return the final score
         return self.cost_factors[0]*C_reba + self.cost_factors[1]*C_safe + self.cost_factors[2]*C_rot
 

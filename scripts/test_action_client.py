@@ -13,7 +13,7 @@ if __name__ == '__main__':
     client.wait_for_server()
 
     # wait for user being ready
-    rospy.sleep(10)
+    rospy.sleep(1)
     os.system('beep')
 
     goal = RebaHandOverGoal()
