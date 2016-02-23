@@ -133,45 +133,45 @@ class RebaAssess(object):
             # legs
             self.polynomial_fit["leg_"+side] = []
             self.polynomial_fit["leg_"+side].append(
-                np.polyfit([-60, -30, 0, 30, 60],
+                np.polyfit([-1.0472, -0.523599, 0, 0.523599, 1.0472],
                            [3, 2, 1, 2, 3], 2))  # knee flexion
             # shoulders
             self.polynomial_fit["shoulder_"+side] = []
             self.polynomial_fit["shoulder_"+side].append(
-                np.polyfit([-90, -45, -20, 0, 20, 45, 90],
+                np.polyfit([-1.5708, -0.785398, -0.349066, 0, 0.349066, 0.785398, 1.5708],
                            [4, 3, 2, 1, 2, 3, 4], 2))  # flexion
             self.polynomial_fit["shoulder_"+side].append(
-                np.polyfit([-90, 0, 90], [1, 0, 1], 2))  # abduction
+                np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # abduction
             self.polynomial_fit["shoulder_"+side].append(
-                np.polyfit([-90, 0, 90], [1, 0, 1], 2))  # twist
+                np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
             # elbows
             self.polynomial_fit["elbow_"+side] = []
             self.polynomial_fit["elbow_"+side].append(
-                np.polyfit([0, 60, 100], [2, 1, 2], 2))  # flexion
+                np.polyfit([0, 1.0472, 1.74533], [2, 1, 2], 2))  # flexion
             # wrists
             self.polynomial_fit["wrist_"+side] = []
             self.polynomial_fit["wrist_"+side].append(
-                np.polyfit([-15, 0, 15], [2, 1, 2], 2))  # flexion
+                np.polyfit([-0.261799, 0, 0.261799], [2, 1, 2], 2))  # flexion
             self.polynomial_fit["wrist_"+side].append(
-                np.polyfit([-90, 0, 90], [1, 0, 1], 2))  # bend
+                np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
             self.polynomial_fit["wrist_"+side].append(
-                np.polyfit([-90, 0, 90], [1, 0, 1], 2))  # twist
+                np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
         # trunk
         self.polynomial_fit["trunk"] = []
         self.polynomial_fit["trunk"].append(
-            np.polyfit([-60, -20, 0, 20, 60], [3, 2, 1, 2, 3], 2))  # flexion
+            np.polyfit([-1.0472, -0.349066, 0, 0.349066, 1.0472], [3, 2, 1, 2, 3], 2))  # flexion
         self.polynomial_fit["trunk"].append(
-            np.polyfit([-90, 0, 90], [1, 0, 1], 2))  # bend
+            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
         self.polynomial_fit["trunk"].append(
-            np.polyfit([-90, 0, 90], [1, 0, 1], 2))  # twist
+            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
         # neck
         self.polynomial_fit["neck"] = []
         self.polynomial_fit["neck"].append(
-            np.polyfit([-20, 0, 20], [2, 1, 2], 2))  # flexion
+            np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))  # flexion
         self.polynomial_fit["neck"].append(np.polyfit(
-            [-90, 0, 90], [1, 0, 1], 2))  # bend
+            [-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
         self.polynomial_fit["neck"].append(np.polyfit(
-            [-90, 0, 90], [1, 0, 1], 2))  # twist
+            [-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
         # sides
         side_poly_fit('R')
         side_poly_fit('L')
@@ -214,7 +214,7 @@ class RebaAssess(object):
 
     def from_joints_to_reba(self, joints, names):
         def assign_value(name, sign=1, offset=0.):
-            return sign*joints[names.index(name)]*self.degrees_factor + offset
+            return sign*joints[names.index(name)] + offset
         data = {}
         # trunk
         data["trunk"] = []
@@ -234,13 +234,13 @@ class RebaAssess(object):
         data["shoulder_R"].append(
             assign_value("right_shoulder_1", 1))  # flexion
         data["shoulder_R"].append(
-            assign_value("right_shoulder_0", -1, 90))  # abduction
+            assign_value("right_shoulder_0", -1, 1.5708))  # abduction
         data["shoulder_R"].append(assign_value("right_shoulder_2"))  # twist
         data["shoulder_L"] = []
         data["shoulder_L"].append(
             assign_value("left_shoulder_1", -1,))  # flexion
         data["shoulder_L"].append(
-            assign_value("left_shoulder_0", -1, 90))  # abduction
+            assign_value("left_shoulder_0", -1, 1.5708))  # abduction
         data["shoulder_L"].append(assign_value("left_shoulder_2"))  # twist
         # elbows
         data["elbow_R"] = [assign_value("right_elbow_0")]
