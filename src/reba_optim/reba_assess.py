@@ -331,3 +331,153 @@ class RebaAssess(object):
             self.save_score("reba", reba_score)
             self.save_log()
         return reba_score
+
+    def reba_assess_old(self, data, epsilon=5):
+        # group A score calculation (trunk,neck,legs)
+        def get_A_score():
+            trunk_score = 0
+            neck_score = 0
+            legs_score = 0
+            leg_R_score = 0
+            leg_L_score = 0
+            # get absolute values of angles
+            trunk = np.absolute(data["trunk"])
+            neck = np.absolute(data["neck"])
+            leg_R = np.absolute(data["leg_R"])
+            leg_L = np.absolute(data["leg_L"])
+            ########### TRUNK ###############
+            # flexion/extension
+            if trunk[0] < epsilon:
+                trunk_score += 1
+            elif trunk[0] < 20:
+                trunk_score += 2
+            elif trunk[0] < 60:
+                trunk_score += 3
+            else:
+                trunk_score += 4
+            # side bending/twisting
+            if trunk[1] > epsilon or trunk[2] > epsilon:
+                trunk_score += 1
+            ########## NECK ############
+            # flexion/extension
+            if neck[0] < 20:
+                neck_score += 1
+            else:
+                neck_score += 2
+            # side bending/twisting
+            if neck[1] > epsilon or neck[2] > epsilon:
+                neck_score += 1
+            ########## LEGS ###########
+            # # both legs in contact with the ground
+            # if leg_R[1] == 1 and leg_L[1] == 1:
+            #     legs_score += 1
+            # else:
+            #     legs_score += 2
+            # knees inclination
+            if leg_R[0] > 60:
+                leg_R_score += 2
+            elif leg_R[0] > 30:
+                leg_R_score += 1
+            if leg_L[0] > 60:
+                leg_L_score += 2
+            elif leg_L[0] > 30:
+                leg_L_score += 1
+            ######### A_SCORE ########
+            # calcualte optim score
+            optim_score = trunk_score + neck_score + leg_R_score + leg_L_score + legs_score
+            # calcalute reba score
+            legs_score += max(leg_R_score, leg_L_score)
+            score = self.reba_A_table[neck_score-1, trunk_score-1, legs_score-1]
+            ######### LOAD ###########
+            # if data["load"] > 5 and data["load"] < 10:
+            #     score += 1
+            # elif data["load"] > 10:
+            #     score += 2
+            # write the log
+            if self.save:
+                self.save_score("trunk", trunk_score)
+                self.save_score("neck", neck_score)
+                self.save_score("legs", legs_score)
+                self.save_score("leg_R", leg_R_score)
+                self.save_score("leg_L", leg_L_score)
+                self.save_score("groupA", score)
+                self.save_score("optimA", optim_score)
+            # return the score
+            return score, optim_score
+
+        # group B score calculation (shoulders,elbows,wrists)
+        def get_B_score():
+            def side_score(side):
+                shoulder_score = 0
+                elbow_score = 0
+                wrist_score = 0
+                # get absolute values of angles
+                shoulder = np.absolute(data["shoulder_"+side])
+                elbows = np.absolute(data["elbow_"+side])
+                wrists = np.absolute(data["wrist_"+side])
+                ######### SHOULDERS ##########
+                # flexion/extension
+                if shoulder[0] < 20 + epsilon:
+                    shoulder_score += 1
+                elif shoulder[0] < 45 + epsilon:
+                    shoulder_score += 2
+                elif shoulder[0] < 90 + epsilon:
+                    shoulder_score += 3
+                else:
+                    shoulder_score += 4
+                # abduction/rotation
+                if shoulder[1] > epsilon or shoulder[2] > epsilon:
+                    shoulder_score += 1
+                ########## ELBOWS ############
+                # flexion/etension
+                if elbows[0] > 60 - epsilon and elbows[0] < 100 + epsilon:
+                    elbow_score += 1
+                else:
+                    elbow_score += 2
+                ######### WRISTS ###########
+                # flexion/extension
+                if wrists[0] < 15 + epsilon:
+                    wrist_score += 1
+                else:
+                    wrist_score += 2
+                # deviation/twisting
+                if wrists[1] > epsilon or wrists[2] > epsilon:
+                    wrist_score += 1
+                # write the log
+                if self.save:
+                    self.save_score("shoulder_"+side, shoulder_score)
+                    self.save_score("elbow_"+side, elbow_score)
+                    self.save_score("wrist_"+side, wrist_score)
+                return shoulder_score, elbow_score, wrist_score
+            # calculate scores for both sides
+            shoulder_R_score, elbow_R_score, wrist_R_score = side_score('R')
+            shoulder_L_score, elbow_L_score, wrist_L_score = side_score('L')
+            optim_score = shoulder_R_score + shoulder_L_score + elbow_R_score + elbow_L_score + wrist_R_score + wrist_L_score
+            # calculate reba score
+            shoulders_score = max(shoulder_R_score, shoulder_L_score)
+            elbows_score = max(elbow_R_score, elbow_L_score)
+            wrists_score = max(wrist_R_score, wrist_L_score)
+            score = self.reba_B_table[elbows_score-1, shoulders_score-1, wrists_score-1]
+            # write the log
+            if self.save:
+                self.save_score("shoulders", shoulders_score)
+                self.save_score("elbows", elbows_score)
+                self.save_score("wrists", wrists_score)
+                self.save_score("groupB", score)
+                self.save_score("optimB", optim_score)
+            # return the score
+            return score, optim_score
+        # first get A and B score
+        A_score, optimA = get_A_score()
+        B_score, optimB = get_B_score()
+        # calculate reba score from reba table
+        reba_score = self.reba_C_table[A_score-1, B_score-1]
+        # add activity score
+        # if data["static"] or data["high_dynamic"]:
+        #     reba_score += 1
+        # save the log
+        if self.save:
+            self.save_score("reba", reba_score)
+            self.save_log()
+        # return reba score
+        return reba_score, (optimA+optimB)
