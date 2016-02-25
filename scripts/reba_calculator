@@ -10,10 +10,12 @@ import numpy as np
 
 class RebaCalculator(object):
     def __init__(self):
-        self.reba = RebaAssess()
+        self.reba = RebaAssess(save_score=True)
         self.reba_values = []
         self.reba_buffer = []
-        self.buffer_size = 10
+        self.buffer_size = 5
+        self.max_time_reset = rospy.Duration(5)
+        self.last_time_message = rospy.get_rostime()
         self.init_plotly_streaming()
 
     def init_plotly_streaming(self):
@@ -36,7 +38,7 @@ class RebaCalculator(object):
         # Add title to layout object
         layout = Layout(title='Reba Score',
                         yaxis=dict(
-                            range=[0, 100]
+                            range=[0, 10]
                             )
                         )
         # Make a figure object
@@ -47,11 +49,21 @@ class RebaCalculator(object):
         self.plot_stream = py.Stream(self.stream_id)
         self.plot_stream.open()
 
+    def reset_stream(self):
+        self.reba_values = []
+        self.reba_buffer = []
+        self.plot_stream.write(dict(x=[], y=[]))
+
     def handle_joint_state_msgs(self, msg):
-        # convert joint state to reba dict
-        reba_dict = self.reba.from_joints_to_reba(msg.position, msg.name)
+        # check with latest receive message to reset if necessary
+        current_time = rospy.get_rostime()
+        if current_time - self.last_time_message > self.max_time_reset:
+            # save previous log
+            self.reba.save_log()
+            self.reset_stream()
+        self.last_time_message = current_time
         # calculate the reba score
-        reba_score = self.reba.reba_assess(reba_dict)
+        reba_score = self.reba.assess_posture(msg.position, msg.name)
         # add the value to the buffer
         self.reba_buffer.append(reba_score)
         if len(self.reba_buffer) == self.buffer_size:
@@ -65,6 +77,8 @@ class RebaCalculator(object):
     def run(self):
         rospy.Subscriber('/human/set_joint_values', JointState, reba_calc.handle_joint_state_msgs)
         rospy.spin()
+        # save the log
+        self.reba.save_log()
         # close plotly stream
         self.plot_stream.close()
 
