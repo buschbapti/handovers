@@ -6,17 +6,20 @@ from plotly.graph_objs import *
 import plotly.tools as tls
 import rospy
 import numpy as np
+from threading import Lock
 
 
 class RebaCalculator(object):
     def __init__(self):
-        self.reba = RebaAssess(save_score=True)
+        self.reba = RebaAssess(save_score=True, deque_size=10)
         self.reba_values = []
         self.reba_buffer = []
         self.buffer_size = 5
         self.max_time_reset = rospy.Duration(5)
         self.last_time_message = rospy.get_rostime()
         self.init_plotly_streaming()
+        self.reset = True
+        self.timelock = Lock()
 
     def init_plotly_streaming(self):
         stream_ids = tls.get_credentials_file()['stream_ids']
@@ -53,15 +56,12 @@ class RebaCalculator(object):
         self.reba_values = []
         self.reba_buffer = []
         self.plot_stream.write(dict(x=[], y=[]))
+        self.reset = True
 
     def handle_joint_state_msgs(self, msg):
-        # check with latest receive message to reset if necessary
-        current_time = rospy.get_rostime()
-        if current_time - self.last_time_message > self.max_time_reset:
-            # save previous log
-            self.reba.save_log()
-            self.reset_stream()
-        self.last_time_message = current_time
+        with self.timelock:
+            self.reset = False
+            self.last_time_message = rospy.get_rostime()
         # calculate the reba score
         reba_score = self.reba.assess_posture(msg.position, msg.name)
         # add the value to the buffer
@@ -76,7 +76,17 @@ class RebaCalculator(object):
 
     def run(self):
         rospy.Subscriber('/human/set_joint_values', JointState, reba_calc.handle_joint_state_msgs)
-        rospy.spin()
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            # check with latest receive message to reset if necessary
+            current_time = rospy.get_rostime()
+            with self.timelock:
+                if current_time - self.last_time_message > self.max_time_reset and not self.reset:
+                    # save previous log
+                    self.reba.save_log()
+                    self.reset_stream()
+            # sleep
+            rate.sleep()
         # save the log
         self.reba.save_log()
         # close plotly stream
