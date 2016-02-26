@@ -11,7 +11,7 @@ from threading import Lock
 
 class RebaCalculator(object):
     def __init__(self):
-        self.reba = RebaAssess(save_score=True, deque_size=10)
+        self.reba = RebaAssess(save_score=True)
         self.reba_values = []
         self.reba_buffer = []
         self.buffer_size = 5
@@ -75,8 +75,8 @@ class RebaCalculator(object):
             self.reba_buffer = []
 
     def run(self):
-        rospy.Subscriber('/human/set_joint_values', JointState, reba_calc.handle_joint_state_msgs)
         rate = rospy.Rate(10)
+        rospy.Subscriber('reba_assess', JointState, self.handle_joint_state_msgs)
         while not rospy.is_shutdown():
             # check with latest receive message to reset if necessary
             current_time = rospy.get_rostime()
