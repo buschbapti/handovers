@@ -6,12 +6,12 @@ from .tools.interpolation import *
 
 
 class RebaAssess(object):
-    def __init__(self, save_score=False):
+    def __init__(self, save_score=False, deque_size=-1):
         self.save = save_score
         # initialize the reba table
         self.reba_table_init()
         # initialize the logger dict
-        self.reba_logger_init()
+        self.reba_logger_init(deque_size)
         # initialize polynomial fit for optimization
         self.polynomial_fit = {}
         self.A_coeff = []
@@ -61,7 +61,7 @@ class RebaAssess(object):
         self.A_coeff = [0.03822852,  0.75622637,  0.7621335]
         self.B_coeff = [0.06068095,  0.68147439, 0.03933057]
 
-    def reba_logger_init(self):
+    def reba_logger_init(self, deque_size):
         # create list of keys
         self.keys = ['neck', 'shoulder_R', 'elbow_R', 'wrist_R',
                      'shoulder_L', 'elbow_L', 'wrist_L',
@@ -71,7 +71,11 @@ class RebaAssess(object):
         # create the map of deque the reba score
         self.reba_log = {}
         for k in self.keys:
-            self.reba_log[k] = []
+            # default deque size -1 mean infinite log
+            if deque_size == -1:
+                self.reba_log[k] = []
+            else:
+                self.reba_log[k] = deque(maxlen=deque_size)
             self.reba_log[k+"_windowed"] = 0.0
 
     def init_poly_fit(self):
@@ -92,13 +96,15 @@ class RebaAssess(object):
         # elbows
         self.polynomial_fit["elbows"] = []
         self.polynomial_fit["elbows"].append(
-            np.polyfit([0, 1.0472, 1.74533], [2, 1, 2], 2))  # flexion
+            np.polyfit([0, 1.0472, 1.74533], [2, 1, 2], 2))  # flexion right side
+        self.polynomial_fit["elbows"].append(
+            np.polyfit([0, -1.0472, -1.74533], [2, 1, 2], 2))  # flexion left side
         # wrists
         self.polynomial_fit["wrists"] = []
         self.polynomial_fit["wrists"].append(
             np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
         self.polynomial_fit["wrists"].append(
-            np.polyfit([-0.261799, 0, 0.261799], [2, 1, 2], 2))  # flexion
+            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))  # flexion
         self.polynomial_fit["wrists"].append(
             np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
         # trunk
@@ -188,7 +194,7 @@ class RebaAssess(object):
         score['shoulder_R'] += assign_value('right_shoulder_'+str(2), 'shoulders', 2)
         score['shoulder_L'] += assign_value('left_shoulder_'+str(2), 'shoulders', 2)
         score['elbow_R'] += assign_value('right_elbow_'+str(0), 'elbows', 0)
-        score['elbow_L'] += assign_value('left_elbow_'+str(0), 'elbows', 0)
+        score['elbow_L'] += assign_value('left_elbow_'+str(0), 'elbows', 1)
         # specific case elbow twisting which is considered as wrist in reba
         score['wrist_R'] += assign_value('right_elbow_'+str(1), 'wrists', 2)
         score['wrist_L'] += assign_value('left_elbow_'+str(1), 'wrists', 2)
