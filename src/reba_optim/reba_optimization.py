@@ -1,34 +1,25 @@
 import numpy as np
 from sympy.mpmath import *
 from sympy import *
-from .read_model import ReadModel
+from human_moveit_config.human_model import HumanModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
-import time
 import math
 import transformations
 from kinect_skeleton_publisher.joint_transformations import sympy_to_numpy, inverse
 
+
 class RebaOptimization(object):
-    def __init__(self, safety_dist, sum_optim=False, save_score=False, cost_factors=None):
+    def __init__(self, safety_dist, cost_factors=None):
         if cost_factors is None:
-            self.cost_factors = [1, 1, 1]
+            self.cost_factors = [1, 1, 1, 1]
         else:
             self.cost_factors = cost_factors
         self.safety_dist = safety_dist
-        self.active_joints = [['spine_0', 'spine_1', 'spine_2',
-                                'left_shoulder_0', 'left_shoulder_1', 'left_shoulder_2',
-                                'left_elbow_0', 'left_elbow_1',
-                                'left_wrist_0', 'left_wrist_1'],
-                                ['spine_0', 'spine_1', 'spine_2',
-                                'right_shoulder_0', 'right_shoulder_1', 'right_shoulder_2',
-                                'right_elbow_0', 'right_elbow_1',
-                                'right_wrist_0', 'right_wrist_1'],
-                                ]
         # initialize human model
-        self.model = ReadModel()
+        self.model = HumanModel()
         # initialize REBA technique
-        self.reba = RebaAssess(save_score=save_score, sum_optim=sum_optim)
+        self.reba = RebaAssess()
 
     def get_active_joints_value(self, joints, side=0):
         joint_values = []
@@ -36,31 +27,15 @@ class RebaOptimization(object):
             joint_values.append(joints[self.model.joint_names.index(name)])
         return joint_values
 
-    def calculate_safety_cost(self, T):
+    def calculate_safety_cost(self, pose):
         cost = 0
         for i in range(3):
-            p = Float(T[i, -1])
+            p = pose[0][i]
             if p < self.safety_dist[i][0]:
                 cost += abs(p - self.safety_dist[i][0])
             elif p > self.safety_dist[i][1]:
                 cost += abs(p - self.safety_dist[i][1])
         return cost
-
-# <<<<<<< HEAD
-#     def cost_function(self, q, side=0, fixed_joints={}):
-#         joints = q
-#         # replace the value of fixed joints
-#         for key, value in fixed_joints.iteritems():
-#             joints[self.model.joint_names.index(key)] = value
-#         # first get the active joints
-#         active = self.get_active_joints_value(joints, side)
-#         # calculate the forward kinematic
-#         T = self.model.forward_kinematic(active, side)
-#         # calculate the cost based on safety distance
-#         C_safe = self.safety_cost(T)
-#         # calculate cost based on desired orientation
-#         C_rot = (T[:-1, :-1] - self.orientation).norm()
-# =======
 
     def calculate_fixed_frame_cost(self, chains, fixed_frames):
         def caclulate_distance_to_frame(pose, ref_pose, coeffs):
@@ -111,69 +86,109 @@ class RebaOptimization(object):
                 cost += caclulate_distance_to_frame(pose, des_pose, coeffs)
         return cost
 
-    def calculate_reba_cost(self, joints):
-        # convert joints to REBA norms
-        reba_data = self.reba.from_joints_to_reba(joints, self.model.joint_names)
+    def calculate_reba_cost(self, joints, save_score=False):
         # use the reba library to calculate the cost
-        cost = self.reba.reba_optim(reba_data)
+        cost = self.reba.assess_posture(joints, self.model.get_joint_names(), save_score)
         return cost
 
-    def assign_value(self, joint_array, dict_values):
+    def fixed_joints_cost(self, joint_array, dict_values):
+        cost = 0
         for key, value in dict_values.iteritems():
-            joint_array[self.model.joint_names.index(key)] = value
+            cost += abs(joint_array[self.model.get_joint_names().index(key)]-value)
+        return cost
 
     def return_value(self, joint_array, key):
-        return joint_array[self.model.joint_names.index(key)]
+        return joint_array[self.model.get_joint_names().index(key)]
 
-    def assign_leg_values(self, joint_array):
-        def assign_per_leg(side):
-            knee = self.return_value(joint_array, side+'_knee')
-            hip, ankle = self.model.calculate_leg_joints(knee)
-            self.assign_value(joint_array, {side+'_hip_1': hip, side+'_ankle_1': hip})
-        assign_per_leg('right')
-        assign_per_leg('left')
+    # def assign_leg_values(self, joint_array):
+    #     def assign_per_leg(side):
+    #         knee = self.return_value(joint_array, side+'_knee')
+    #         hip, ankle = self.model.calculate_leg_joints(knee)
+    #         self.assign_value(joint_array, {side+'_hip_1': hip, side+'_ankle_1': hip})
+    #     assign_per_leg('right')
+    #     assign_per_leg('left')
+
+    def calculate_sight_cost(self, obj_pos, head_frame):
+        # calculate head to object vector
+        OH = np.array(head_frame[0]) - np.array(obj_pos)
+        OH /= np.linalg.norm(OH)
+        # calculate head x vector
+        q = np.array(head_frame[1])
+        Hx = [1-2*q[1]*q[1]-2*q[2]*q[2],
+              2*(q[0]*q[1]+q[2]*q[3]),
+              2*(q[0]*q[2]-q[1]*q[3])]
+        # check colinearity between the two vectors
+        cost = 0
+        for i in range(3):
+            for j in range(i, 3):
+                cost += (Hx[i]*OH[j]-Hx[j]*OH[i])**2
+        return cost
 
     def cost_function(self, q, side=0, fixed_joints={}, fixed_frames={}):
-        joints = q
         C_reba = 0
         C_safe = 0
+        C_sight = 0
         C_fixed_frame = 0
+        C_fixed_joints = 0
         # replace the value of fixed joints
-        self.assign_value(q, fixed_joints)
-        # replace the value of the leg angles using optimized knee value
-        self.assign_leg_values(q)
+        C_fixed_joints = self.fixed_joints_cost(q, fixed_joints)
         # check the necessity to perform the operations
-        if self.cost_factors[1] != 0 or (self.cost_factors[2] != 0 and fixed_frames):
-            # first get the active joints
-            active = self.get_active_joints_value(joints, side)
+        if (self.cost_factors[1] != 0 or
+            self.cost_factors[2] != 0 or
+           (self.cost_factors[3] != 0 and fixed_frames)):
+            # get current state
+            js = self.model.get_current_state().joint_state
+            # set the new joint values
+            js.position = q
             # calculate the forward kinematic
-            chains = self.model.forward_kinematic(active)
+            fk_dict = self.model.full_forward_kinematic(js)
+            # extract hand pose
+            if side == 0:
+                hand_pose = fk_dict['right_hand_tip']
+            else:
+                hand_pose = fk_dict['left_hand_tip']
+            # calculate the cost based on safety distance
             if self.cost_factors[1] != 0:
-                T = chains[side][-1]
-                # calculate the cost based on safety distance
-                C_safe = self.calculate_safety_cost(T)
+                C_safe = self.calculate_safety_cost(hand_pose)
+            # calculate the cost of having the object in sight
+            if self.cost_factors[2] != 0:
+                # extract head pose
+                head_pose = fk_dict['head_tip']
+                C_sight = self.calculate_sight_cost(hand_pose[0], head_pose)
             if self.cost_factors[2] != 0 and fixed_frames:
                 # calculate cost based on the fixed frames
                 C_fixed_frame = self.calculate_fixed_frame_cost(chains, fixed_frames)
         # calculate REBA score
         if self.cost_factors[0] != 0:
-            C_reba = self.calculate_reba_cost(joints)
+            C_reba = self.calculate_reba_cost(q)
         # return the final score
-        return self.cost_factors[0]*C_reba + self.cost_factors[1]*C_safe + self.cost_factors[2]*C_fixed_frame
+        cost = (C_fixed_joints +
+                self.cost_factors[0]*C_reba +
+                self.cost_factors[1]*C_safe +
+                self.cost_factors[2]*C_sight +
+                self.cost_factors[3]*C_fixed_frame)
+        return cost
 
     def optimize_posture(self, joints, side=0, var=0.1, fixed_joints={}, fixed_frames={}):
         # by default hip and ankles angles are fixed
         fixed_joints['right_hip_0'] = 0.
+        fixed_joints['right_hip_1'] = 0.
         fixed_joints['right_hip_2'] = 0.
+        fixed_joints['right_knee'] = 0.
         fixed_joints['right_ankle_0'] = 0.
+        fixed_joints['right_ankle_1'] = 0.
+
         fixed_joints['left_hip_0'] = 0.
+        fixed_joints['left_hip_1'] = 0.
         fixed_joints['left_hip_2'] = 0.
+        fixed_joints['left_knee'] = 0.
         fixed_joints['left_ankle_0'] = 0.
+        fixed_joints['left_ankle_1'] = 0.
         # get the joints limits for the optimization
-        joint_limits = self.model.joint_limits()['limits']
+        joint_limits = self.model.get_joint_limits()
         # call optimization from scipy
-        res = minimize(self.cost_function, joints, args=(side, fixed_joints, fixed_frames ), method='L-BFGS-B', bounds=joint_limits, options={'eps':var})
-        # replace the value of fixed joints
-        for key, value in fixed_joints.iteritems():
-            res.x[self.model.joint_names.index(key)] = value
+        res = minimize(self.cost_function, joints,
+                       args=(side, fixed_joints, fixed_frames, ),
+                       method='L-BFGS-B', bounds=joint_limits,
+                       options={'eps': var})
         return res
