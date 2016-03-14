@@ -6,8 +6,7 @@ from .tools.interpolation import *
 
 
 class RebaAssess(object):
-    def __init__(self, save_score=False, deque_size=-1):
-        self.save = save_score
+    def __init__(self, deque_size=-1):
         # initialize the reba table
         self.reba_table_init()
         # initialize the logger dict
@@ -156,7 +155,7 @@ class RebaAssess(object):
         with open('/tmp/pause_log.json', 'w') as outfile:
             json.dump(log_data, outfile, indent=4, sort_keys=True)
 
-    def assess_posture(self, joints, names):
+    def assess_posture(self, joints, names, save_score=False):
         def assign_value(name, group_name, index):
             joint = joints[names.index(name)]
             coeffs = self.polynomial_fit[group_name][index]
@@ -198,6 +197,11 @@ class RebaAssess(object):
         # specific case elbow twisting which is considered as wrist in reba
         score['wrist_R'] += assign_value('right_elbow_'+str(1), 'wrists', 2)
         score['wrist_L'] += assign_value('left_elbow_'+str(1), 'wrists', 2)
+
+        sum_reba = 0
+        for key, value in score.iteritems():
+            sum_reba += value
+
         # for legs, wrists, elbows and joints takes the average on both side
         score['legs'] += (score['leg_R'] + score['leg_L'])/2
         score['wrists'] += (score['wrist_R'] + score['wrist_L'])/2
@@ -213,6 +217,7 @@ class RebaAssess(object):
         # calculate the total reba score
         score['reba'] = score['groupA'] + score['groupB']
         # save the score
-        if self.save:
+        if save_score:
             self.save_score_dict(score)
-        return score['reba']
+
+        return sum_reba
