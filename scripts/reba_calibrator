@@ -2,51 +2,61 @@
 import rospy
 from reba_optim.reba_optimization import RebaOptimization
 import rospkg
-import yaml
+import numpy as np
+# import yaml
 
 if __name__ == "__main__":
     rospy.init_node('reba_calibrator')
     rospack = rospkg.RosPack()
-    distance = [[0.5, 1.5], [-10., 10.], [-10, 10]]
-    optim = RebaOptimization(distance, cost_factors=[1, 5, 2, 0])
+    optim = RebaOptimization(cost_factors=[0, 1, 1, 0])
     rospy.loginfo('Calibrating the hand-over location.')
     # optimize the hand-over location with the specified parameters for both sides
     tf_hip = []
     side = ['right', 'left']
-    for i in range(2):
-        # generate a random pose to start the optimization
-        joints = optim.model.get_random_state().position
-        res = optim.optimize_posture(joints, i)
-        opt_joints = res.x.tolist()
-        # calculate the forward kinematic
-        js = optim.model.get_current_state().joint_state
-        # set the new joint values
-        js.position = opt_joints
+    # for i in range(2):
+    # generate a random pose to start the optimization
+    joints = optim.model.get_random_state().position
+    optim.object_pose = np.array([0.5, 0.0, 0.5])
+    res = optim.optimize_posture(joints, 'reach', side=0, nb_points=1)
 
-        optim.model.send_state(js)
+    while not rospy.is_shutdown():
+        raw_input("Press Enter to continue...")
 
-        print js
-        print 'reba value:'
-        print optim.calculate_reba_cost(js.position, True)
-        rospy.sleep(5)
+        for opt_joints in res:
+            # calculate the forward kinematic
+            js = optim.model.get_current_state().joint_state
+            # set the new joint values
+            js.position = opt_joints
 
-        # calculate the forward kinematic
-        fk_dict = optim.model.full_forward_kinematic(js)
-        # convert from transformation matrix to tf
-        tf_hip.append(fk_dict[side[i]+'_hand_tip'])
+            optim.model.send_state(js)
+            joints = optim.model.extract_group_joints('right_arm', js)
+            print optim.object_pose
+            print optim.model.forward_kinematic('right_arm', joints)[0]
+            print '------------------'
+            rospy.sleep(0.1)
 
-    print tf_hip[0]
-    print tf_hip[1]
+    # print js
+    # print 'reba value:'
+    # print optim.calculate_reba_cost(js.position, True)
+    # rospy.sleep(5)
 
-    optim.reba.save_log()
+    # # calculate the forward kinematic
+    # fk_dict = optim.model.full_forward_kinematic(js)
+    # # convert from transformation matrix to tf
+    # tf_hip.append(fk_dict[side[0]+'_hand_tip'])
 
-    print 'loggin finished'
-    # set it on the parameter server
-    rospy.set_param("/reba/hand_over_location/right", tf_hip[0])
-    rospy.set_param("/reba/hand_over_location/left", tf_hip[1])
-    # dump it in a file
-    with open(rospack.get_path("reba_optim")+"/config/right_hand_over_location.yaml", 'w') as f:
-        yaml.dump(tf_hip[0], f)
-    with open(rospack.get_path("reba_optim")+"/config/left_hand_over_location.yaml", 'w') as f:
-        yaml.dump(tf_hip[1], f)
-    rospy.loginfo('Hand-over location calculated and set on the parameter server.')
+    # print tf_hip[0]
+    # print tf_hip[1]
+
+    # optim.reba.save_log()
+
+    # print 'loggin finished'
+    # # set it on the parameter server
+    # rospy.set_param("/reba/hand_over_location/right", tf_hip[0])
+    # rospy.set_param("/reba/hand_over_location/left", tf_hip[1])
+    # # dump it in a file
+    # with open(rospack.get_path("reba_optim")+"/config/right_hand_over_location.yaml", 'w') as f:
+    #     yaml.dump(tf_hip[0], f)
+    # with open(rospack.get_path("reba_optim")+"/config/left_hand_over_location.yaml", 'w') as f:
+    #     yaml.dump(tf_hip[1], f)
+    # rospy.loginfo('Hand-over location calculated and set on the parameter server.')
