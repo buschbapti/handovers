@@ -10,7 +10,7 @@ from geometry_msgs.msg import PoseStamped
 def handle_carry_pose_requests(req):
     if req.type == 'fixed':
         pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
-        with open(pkg_dir+'/config/fixed_pose.yml', 'r') as datafile:
+        with open(pkg_dir+'/config/fixed_pose.yaml', 'r') as datafile:
             data = yaml.load(datafile)
         # convert data to Posestamped
         pose = transformations.list_to_pose(data)
@@ -22,7 +22,7 @@ def handle_carry_pose_requests(req):
 
 
 def main():
-    rospy.init_node('human_ik_srv')
+    rospy.init_node('get_carry_pose_srv')
     rospy.Service('thr/get_carry_pose', GetCarryPose, handle_carry_pose_requests)
     print "Ready to receive carry request"
     rospy.spin()

@@ -23,8 +23,8 @@ def main():
 
     pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
 
-    with open(pkg_dir+'/config/fixed_pose.yml', 'w') as outfile:
-        outfile.write(yaml.dump(transform, default_flow_style=True))
+    with open(pkg_dir+'/config/fixed_pose.yaml', 'w') as outfile:
+        yaml.dump(transform, outfile, default_flow_style=True)
     return 0
 
 if __name__ == '__main__':
