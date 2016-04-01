@@ -15,6 +15,7 @@ class RebaAssess(object):
         self.polynomial_fit = {}
         self.A_coeff = []
         self.B_coeff = []
+        self.init_reba_dict()
         self.init_poly_fit()
         self.init_coeffs()
 
@@ -83,45 +84,77 @@ class RebaAssess(object):
         self.polynomial_fit["legs"].append(
             np.polyfit([-1.0472, 0, 1.0472],
                        [3, 1, 3], 2))  # knee flexion
+        self.polynomial_fit["deriv_legs"] = []
+        for p in self.polynomial_fit["legs"]:
+            self.polynomial_fit["deriv_legs"].append(
+                np.polyder(p))
         # shoulders
         self.polynomial_fit["shoulders"] = []
         self.polynomial_fit["shoulders"].append(
-            np.polyfit([0.0, 1.5708, 3.14157], [1, 0, 1], 2))  # abduction
+            np.polyfit([0.0, 1.5708, 3.14157], [4, 1, 4], 2))  # abduction
         self.polynomial_fit["shoulders"].append(
             np.polyfit([-1.5708, 0.0, 1.5708],
                        [4, 1, 4], 2))  # flexion
         self.polynomial_fit["shoulders"].append(
-            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            np.polyfit([-1.5708, 0.0, 1.5708],
+                       [4, 1, 4], 2))
+        self.polynomial_fit["deriv_shoulders"] = []
+        for p in self.polynomial_fit["shoulders"]:
+            self.polynomial_fit["deriv_shoulders"].append(
+                np.polyder(p))
         # elbows
         self.polynomial_fit["elbows"] = []
         self.polynomial_fit["elbows"].append(
             np.polyfit([0, 1.0472, 1.74533], [2, 1, 2], 2))  # flexion right side
         self.polynomial_fit["elbows"].append(
             np.polyfit([0, -1.0472, -1.74533], [2, 1, 2], 2))  # flexion left side
+        self.polynomial_fit["deriv_elbows"] = []
+        for p in self.polynomial_fit["elbows"]:
+            self.polynomial_fit["deriv_elbows"].append(
+                np.polyder(p))
         # wrists
         self.polynomial_fit["wrists"] = []
         self.polynomial_fit["wrists"].append(
-            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
+            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))
         self.polynomial_fit["wrists"].append(
             np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))  # flexion
         self.polynomial_fit["wrists"].append(
-            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))
+        self.polynomial_fit["deriv_wrists"] = []
+        for p in self.polynomial_fit["wrists"]:
+            self.polynomial_fit["deriv_wrists"].append(
+                np.polyder(p))
         # trunk
         self.polynomial_fit["trunk"] = []
         self.polynomial_fit["trunk"].append(
-            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
+            np.polyfit([-1.0472, 0.0, 1.0472], [3, 1, 3], 2))
         self.polynomial_fit["trunk"].append(
             np.polyfit([-1.0472, 0.0, 1.0472], [3, 1, 3], 2))  # flexion
         self.polynomial_fit["trunk"].append(
-            np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            np.polyfit([-1.0472, 0.0, 1.0472], [3, 1, 3], 2))
+        self.polynomial_fit["deriv_trunk"] = []
+        for p in self.polynomial_fit["trunk"]:
+            self.polynomial_fit["deriv_trunk"].append(
+                np.polyder(p))
         # neck
         self.polynomial_fit["neck"] = []
-        self.polynomial_fit["neck"].append(np.polyfit(
-            [-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
+        self.polynomial_fit["neck"].append(
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
+            np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))
         self.polynomial_fit["neck"].append(
             np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))  # flexion
-        self.polynomial_fit["neck"].append(np.polyfit(
-            [-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+        self.polynomial_fit["neck"].append(
+            # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
+            np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))
+        self.polynomial_fit["deriv_neck"] = []
+        for p in self.polynomial_fit["neck"]:
+            self.polynomial_fit["deriv_neck"].append(
+                np.polyder(p))
 
     def save_score(self, key, score):
         self.reba_log[key].append(score)
@@ -155,69 +188,52 @@ class RebaAssess(object):
         with open('/tmp/pause_log.json', 'w') as outfile:
             json.dump(log_data, outfile, indent=4, sort_keys=True)
 
-    def assess_posture(self, joints, names, save_score=False):
-        def assign_value(name, group_name, index):
-            joint = joints[names.index(name)]
-            coeffs = self.polynomial_fit[group_name][index]
-            return np.polyval(coeffs, joint)
+    def assign_value(self, joint, group_name, index):
+        coeffs = self.polynomial_fit[group_name][index]
+        return np.polyval(coeffs, joint)
 
-        # calculate each score individually
-        score = {}
-        score['neck'] = 0
-        score['trunk'] = 0
-        score['legs'] = 0
-        score['shoulders'] = 0
-        score['elbows'] = 0
-        score['wrists'] = 0
-        score['leg_R'] = 0
-        score['shoulder_R'] = 0
-        score['elbow_R'] = 0
-        score['wrist_R'] = 0
-        score['leg_L'] = 0
-        score['shoulder_L'] = 0
-        score['elbow_L'] = 0
-        score['wrist_L'] = 0
-        # start with group of two joints
+    def init_reba_dict(self):
+        self.reba_dict = {}
         for i in range(2):
-            score['neck'] += assign_value('neck_'+str(i), 'neck', i)
-            score['trunk'] += assign_value('spine_'+str(i), 'trunk', i)
-            score['shoulder_R'] += assign_value('right_shoulder_'+str(i), 'shoulders', i)
-            score['shoulder_L'] += assign_value('left_shoulder_'+str(i), 'shoulders', i)
-            score['wrist_R'] += assign_value('right_wrist_'+str(i), 'wrists', i)
-            score['wrist_L'] += assign_value('left_wrist_'+str(i), 'wrists', i)
+            self.reba_dict['neck_'+str(i)] = {'group_name': 'neck', 'index': i}
+            self.reba_dict['spine_'+str(i)] = {'group_name': 'trunk', 'index': i}
+            self.reba_dict['right_shoulder_'+str(i)] = {'group_name': 'shoulders', 'index': i}
+            self.reba_dict['left_shoulder_'+str(i)] = {'group_name': 'shoulders', 'index': i}
+            self.reba_dict['right_wrist_'+str(i)] = {'group_name': 'wrists', 'index': i}
+            self.reba_dict['left_wrist_'+str(i)] = {'group_name': 'wrists', 'index': i}
         # add missing joints
-        score['neck'] += assign_value('neck_'+str(2), 'neck', 2)
-        score['trunk'] += assign_value('spine_'+str(2), 'trunk', 2)
-        score['leg_R'] += assign_value('right_knee', 'legs', 0)
-        score['leg_L'] = assign_value('left_knee', 'legs', 0)
-        score['shoulder_R'] += assign_value('right_shoulder_'+str(2), 'shoulders', 2)
-        score['shoulder_L'] += assign_value('left_shoulder_'+str(2), 'shoulders', 2)
-        score['elbow_R'] += assign_value('right_elbow_'+str(0), 'elbows', 0)
-        score['elbow_L'] += assign_value('left_elbow_'+str(0), 'elbows', 1)
+        self.reba_dict['neck_'+str(2)] = {'group_name': 'neck', 'index': 2}
+        self.reba_dict['spine_'+str(2)] = {'group_name': 'trunk', 'index': 2}
+        self.reba_dict['right_shoulder_'+str(2)] = {'group_name': 'shoulders', 'index': 2}
+        self.reba_dict['left_shoulder_'+str(2)] = {'group_name': 'shoulders', 'index': 2}
+        self.reba_dict['right_knee'] = {'group_name': 'legs', 'index': 0}
+        self.reba_dict['left_knee'] = {'group_name': 'legs', 'index': 0}
+        self.reba_dict['right_elbow_'+str(0)] = {'group_name': 'elbows', 'index': 0}
+        self.reba_dict['left_elbow_'+str(0)] = {'group_name': 'elbows', 'index': 1}
         # specific case elbow twisting which is considered as wrist in reba
-        score['wrist_R'] += assign_value('right_elbow_'+str(1), 'wrists', 2)
-        score['wrist_L'] += assign_value('left_elbow_'+str(1), 'wrists', 2)
+        self.reba_dict['right_elbow_'+str(1)] = {'group_name': 'wrists', 'index': 2}
+        self.reba_dict['left_elbow_'+str(1)] = {'group_name': 'wrists', 'index': 2}
 
+    def deriv_assess_posture(self, joints, names):
+        # calculate each score individually
+        deriv = []
+        for i in range(len(names)):
+            if names[i] in self.reba_dict:
+                reba_group = self.reba_dict[names[i]]
+                deriv.append(self.assign_value(joints[i],
+                                               'deriv_'+reba_group['group_name'],
+                                               reba_group['index']))
+            else:
+                deriv.append(0)
+        return deriv
+
+    def assess_posture(self, joints, names):
+        # calculate the reba based on sum of polynoms
         sum_reba = 0
-        for key, value in score.iteritems():
-            sum_reba += value
-
-        # for legs, wrists, elbows and joints takes the average on both side
-        score['legs'] += (score['leg_R'] + score['leg_L'])/2
-        score['wrists'] += (score['wrist_R'] + score['wrist_L'])/2
-        score['elbows'] += (score['elbow_R'] + score['elbow_L'])/2
-        score['shoulders'] += (score['shoulder_R'] + score['shoulder_L'])/2
-        # calculate the A and B score
-        score['groupA'] = (self.A_coeff[0]*score['neck'] +
-                           self.A_coeff[1]*score['trunk'] +
-                           self.A_coeff[2]*score['legs'])
-        score['groupB'] = (self.B_coeff[0]*score['elbows'] +
-                           self.B_coeff[1]*score['shoulders'] +
-                           self.B_coeff[2]*score['wrists'])
-        # calculate the total reba score
-        score['reba'] = score['groupA'] + score['groupB']
-        # save the score
-        if save_score:
-            self.save_score_dict(score)
-
+        for i in range(len(names)):
+            if names[i] in self.reba_dict:
+                reba_group = self.reba_dict[names[i]]
+                sum_reba += self.assign_value(joints[i],
+                                              reba_group['group_name'],
+                                              reba_group['index'])
         return sum_reba
