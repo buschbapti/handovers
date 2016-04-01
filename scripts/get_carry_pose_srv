@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+import rospy
+from thr_infrastructure_msgs.srv import GetCarryPose, GetCarryPoseResponse
+import yaml
+import roslib.packages
+import transformations
+from geometry_msgs.msg import PoseStamped
+
+
+def handle_carry_pose_requests(req):
+    if req.type == 'fixed':
+        pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
+        with open(pkg_dir+'/config/fixed_pose.yml', 'r') as datafile:
+            data = yaml.load(datafile)
+        # convert data to Posestamped
+        pose = transformations.list_to_pose(data)
+        pose.header.frame_id = 'base'
+        pose.header.stamp = rospy.get_rostime()
+    else:
+        pose = PoseStamped()
+    return GetCarryPoseResponse(object_pose=pose)
+
+
+def main():
+    rospy.init_node('human_ik_srv')
+    rospy.Service('thr/get_carry_pose', GetCarryPose, handle_carry_pose_requests)
+    print "Ready to receive carry request"
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()
