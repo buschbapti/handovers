@@ -3,37 +3,89 @@ import rospy
 from reba_optim.reba_optimization import RebaOptimization
 import rospkg
 import numpy as np
+import tf
+from visualization_msgs.msg import Marker
 # import yaml
 
 if __name__ == "__main__":
     rospy.init_node('reba_calibrator')
     rospack = rospkg.RosPack()
-    optim = RebaOptimization(cost_factors=[0, 1, 1, 0])
+    # initialize tf
+    tfl = tf.TransformListener()
+    optim = RebaOptimization(cost_factors=[1, 100, 0, 0])
     rospy.loginfo('Calibrating the hand-over location.')
     # optimize the hand-over location with the specified parameters for both sides
     tf_hip = []
     side = ['right', 'left']
     # for i in range(2):
     # generate a random pose to start the optimization
-    joints = optim.model.get_random_state().position
-    optim.object_pose = np.array([0.5, 0.0, 0.5])
-    res = optim.optimize_posture(joints, 'reach', side=0, nb_points=1)
+    joints = np.zeros(len(optim.model.get_joint_names()))
+    # get the pose of the object in world
+
+    # hip_object_pose = tfl.lookupTransform('/human/hip', '/toolbox/handle', rospy.Time(0))
+    # optim.object_pose = np.array(hip_object_pose[0])
+    optim.object_pose = np.array([0.75, -0.25, 0.1])
+    optim.set_screwing_parameters(0.42, 0.1)
+
+    # define the message for object vizualization
+    pub_marker = rospy.Publisher("visualization_marker", Marker, queue_size=10)
+
+    marker = Marker()
+    marker.header.frame_id = "hip"
+    marker.header.stamp = rospy.get_rostime()
+    marker.type = Marker.CYLINDER
+    marker.action = Marker.ADD
+    marker.pose.position.x = optim.object_pose[0]
+    marker.pose.position.y = optim.object_pose[1]
+    marker.pose.position.z = optim.object_pose[2]
+    marker.pose.orientation.x = 0.0
+    marker.pose.orientation.y = 0.0
+    marker.pose.orientation.z = 0.0
+    marker.pose.orientation.w = 1.0
+    marker.scale.x = 2*optim.circle_rad
+    marker.scale.y = 2*optim.circle_rad
+    marker.scale.z = 0.1
+    marker.color.a = 1.0
+    marker.color.r = 0.0
+    marker.color.g = 1.0
+    marker.color.b = 0.0
+
+    # by default hip and ankles angles are fixed
+    fixed_joints = {}
+    fixed_joints['right_hip_0'] = 0.
+    fixed_joints['right_hip_1'] = 0.
+    fixed_joints['right_hip_2'] = 0.
+    fixed_joints['right_knee'] = 0.
+    fixed_joints['right_ankle_0'] = 0.
+    fixed_joints['right_ankle_1'] = 0.
+
+    fixed_joints['left_hip_0'] = 0.
+    fixed_joints['left_hip_1'] = 0.
+    fixed_joints['left_hip_2'] = 0.
+    fixed_joints['left_knee'] = 0.
+    fixed_joints['left_ankle_0'] = 0.
+    fixed_joints['left_ankle_1'] = 0.
+
+    # optimize to find the pose of the hand
+    res = optim.optimize_posture(joints, 'screw', side=0, nb_points=1, fixed_joints=fixed_joints)
 
     while not rospy.is_shutdown():
-        raw_input("Press Enter to continue...")
+        # calculate the forward kinematic
+        js = optim.model.get_current_state()
+        # set the new joint values
+        js.position = res[-1]
+        optim.model.send_state(js)
 
-        for opt_joints in res:
-            # calculate the forward kinematic
-            js = optim.model.get_current_state().joint_state
-            # set the new joint values
-            js.position = opt_joints
+        # send the marker message
+        pub_marker.publish(marker)
 
-            optim.model.send_state(js)
-            joints = optim.model.extract_group_joints('right_arm', js)
-            print optim.object_pose
-            print optim.model.forward_kinematic('right_arm', joints)[0]
-            print '------------------'
-            rospy.sleep(0.1)
+        # print optim.object_pose
+        # hand = optim.model.forward_kinematic(js, group_name='right_arm')['right_hand_tip']
+        # print hand
+        # print np.linalg.norm(hand[0] - optim.object_pose)
+        # print '------------------'
+
+        rospy.sleep(0.1)
 
     # print js
     # print 'reba value:'
