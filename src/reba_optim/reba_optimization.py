@@ -8,8 +8,6 @@ import math
 import transformations
 from kinect_skeleton_publisher.joint_transformations import sympy_to_numpy, inverse
 from copy import copy
-import sys
-import rospy
 
 
 class RebaOptimization(object):
@@ -26,13 +24,15 @@ class RebaOptimization(object):
         # initialize task dependant informations
         self.safety_dist = [[0.5, 1.5], [-10., 10.], [-10, 10]]
         self.object_pose = []
-        self.set_screwing_parameters(0.0, 0.0)
+        self.set_screwing_parameters(0.42, 0.2)
 
     def set_screwing_parameters(self, object_length, screwdriver_length):
         self.object_length = object_length
         self.screwdriver_length = screwdriver_length
         self.circle_rad = ((self.object_length+self.screwdriver_length)/2)
         self.circle_rad2 = self.circle_rad**2
+
+        print self.circle_rad
 
     def get_active_joints_value(self, joints, side=0):
         joint_values = []
@@ -89,10 +89,15 @@ class RebaOptimization(object):
                 cost += caclulate_distance_to_frame(pose, des_pose, coeffs)
         return cost
 
-    def calculate_reba_cost(self, joints, save_score=False):
+    def calculate_reba_cost(self, joints):
         # use the reba library to calculate the cost
-        cost = self.reba.assess_posture(joints, self.model.get_joint_names(), save_score)
+        cost = self.reba.assess_posture(joints, self.model.get_joint_names())
         return cost
+
+    def jacobian_reba_cost(self, joints):
+        # use the reba library to calculate the cost
+        jac = self.reba.deriv_assess_posture(joints, self.model.get_joint_names())
+        return jac
 
     def fixed_joints_cost(self, joint_array, dict_values):
         cost = 0
@@ -194,12 +199,14 @@ class RebaOptimization(object):
 
     def jacobian_screwing_cost(self, fk_hand, jac_human):
         jac_cost = np.zeros(len(jac_human[0]))
-        z_diff = 2*(self.object_pose[2] - fk_hand[0][2])
+        z_diff = -2*(self.object_pose[2] - fk_hand[0][2])
         x_diff = fk_hand[0][0] - self.object_pose[0]
         y_diff = fk_hand[0][1] - self.object_pose[1]
-        circle_diff = 4*(x_diff**2 + y_diff**2 - self.circle_rad2)
+        circle_diff = 4*((fk_hand[0][0]-self.object_pose[0])**2 +
+                         (fk_hand[0][1]-self.object_pose[1])**2 -
+                         self.circle_rad2)
         for i in range(len(jac_cost)):
-            jac_z = jac_human[2][i]*z_diff
+            jac_z = jac_human[2, i]*z_diff
             jac_circle = (jac_human[0, i]*x_diff + jac_human[1, i]*y_diff)*circle_diff
             jac_cost[i] = jac_z + jac_circle
         return jac_cost
@@ -256,11 +263,11 @@ class RebaOptimization(object):
             self.cost_factors[2] != 0 or
            (self.cost_factors[3] != 0 and fixed_frames)):
             # get current state
-            js = self.model.get_current_state().joint_state
+            js = self.model.get_current_state()
             # set the new joint values
             js.position = q
             # calculate the forward kinematic
-            fk_dict = self.model.full_forward_kinematic(js, 'upper_body')
+            fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
             # extract hand pose
             if side == 0:
                 hand_pose = fk_dict['right_hand_tip']
@@ -304,11 +311,11 @@ class RebaOptimization(object):
             self.cost_factors[2] != 0 or
            (self.cost_factors[3] != 0 and fixed_frames)):
             # get current state
-            js = self.model.get_current_state().joint_state
+            js = self.model.get_current_state()
             # set the new joint values
             js.position = q
             # calculate the forward kinematic
-            fk_dict = self.model.full_forward_kinematic(js, 'upper_body')
+            fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
             # extract hand pose and human jacobian
             if side == 0:
                 hand_pose = fk_dict['right_hand_tip']
@@ -328,12 +335,8 @@ class RebaOptimization(object):
                 jac_head = self.model.jacobian('head', js, use_quaternion=True)
                 jac_sight = self.jacobian_sight_cost(self.object_pose, head_pose, jac_head)
         # calculate REBA jacobian
-        # TODO
-        # sum all the jacobians
-        # print jac_fix
-        # print jac_task
-        # print jac_hand
-        # print '-------------'
+        if self.cost_factors[0] != 0:
+            jac_reba = self.jacobian_reba_cost(q)
         jac_cost = (jac_fix +
                     self.cost_factors[0]*jac_reba +
                     self.cost_factors[1]*jac_task +
@@ -342,24 +345,6 @@ class RebaOptimization(object):
 
     def optimize_posture(self, joints, task, side=0, nb_points=1, fixed_joints={}):
         self.task = task
-        # by default hip and ankles angles are fixed
-        fixed_joints['right_hip_0'] = 0.
-        fixed_joints['right_hip_1'] = 0.
-        fixed_joints['right_hip_2'] = 0.
-        fixed_joints['right_knee'] = 0.
-        fixed_joints['right_ankle_0'] = 0.
-        fixed_joints['right_ankle_1'] = 0.
-
-        fixed_joints['left_hip_0'] = 0.
-        fixed_joints['left_hip_1'] = 0.
-        fixed_joints['left_hip_2'] = 0.
-        fixed_joints['left_knee'] = 0.
-        fixed_joints['left_ankle_0'] = 0.
-        fixed_joints['left_ankle_1'] = 0.
-
-        fixed_joints['spine_0'] = 0
-        fixed_joints['spine_2'] = 0
-
         # initialize the trajectory
         joint_traj = []
         # get the joints limits for the optimization
