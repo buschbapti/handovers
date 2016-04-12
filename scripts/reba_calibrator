@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # hip_object_pose = tfl.lookupTransform('/human/hip', '/toolbox/handle', rospy.Time(0))
     # optim.object_pose = np.array(hip_object_pose[0])
-    optim.object_pose = np.array([0.75, -0.25, 0.1])
+    optim.object_pose = np.array([0.75, -0.25, 0.5])
     optim.set_screwing_parameters(0.42, 0.1)
 
     # define the message for object vizualization
@@ -65,6 +65,9 @@ if __name__ == "__main__":
     fixed_joints['left_knee'] = 0.
     fixed_joints['left_ankle_0'] = 0.
     fixed_joints['left_ankle_1'] = 0.
+
+    # fix spine joints as it is not used in REBA calculation
+    fixed_joints['spine'] = 0.
 
     # optimize to find the pose of the hand
     res = optim.optimize_posture(joints, 'screw', side=0, nb_points=1, fixed_joints=fixed_joints)

@@ -196,14 +196,14 @@ class RebaAssess(object):
         self.reba_dict = {}
         for i in range(2):
             self.reba_dict['neck_'+str(i)] = {'group_name': 'neck', 'index': i}
-            self.reba_dict['spine_'+str(i)] = {'group_name': 'trunk', 'index': i}
+            self.reba_dict['waist_'+str(i)] = {'group_name': 'trunk', 'index': i}
             self.reba_dict['right_shoulder_'+str(i)] = {'group_name': 'shoulders', 'index': i}
             self.reba_dict['left_shoulder_'+str(i)] = {'group_name': 'shoulders', 'index': i}
             self.reba_dict['right_wrist_'+str(i)] = {'group_name': 'wrists', 'index': i}
             self.reba_dict['left_wrist_'+str(i)] = {'group_name': 'wrists', 'index': i}
         # add missing joints
         self.reba_dict['neck_'+str(2)] = {'group_name': 'neck', 'index': 2}
-        self.reba_dict['spine_'+str(2)] = {'group_name': 'trunk', 'index': 2}
+        self.reba_dict['waist_'+str(2)] = {'group_name': 'trunk', 'index': 2}
         self.reba_dict['right_shoulder_'+str(2)] = {'group_name': 'shoulders', 'index': 2}
         self.reba_dict['left_shoulder_'+str(2)] = {'group_name': 'shoulders', 'index': 2}
         self.reba_dict['right_knee'] = {'group_name': 'legs', 'index': 0}

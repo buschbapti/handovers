@@ -270,16 +270,16 @@ class RebaOptimization(object):
             fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
             # extract hand pose
             if side == 0:
-                hand_pose = fk_dict['right_hand_tip']
+                hand_pose = fk_dict['right_hand']
             else:
-                hand_pose = fk_dict['left_hand_tip']
+                hand_pose = fk_dict['left_hand']
             # calculate the cost based on safety distance
             if self.cost_factors[1] != 0:
                 C_task = self.calculate_task_cost(hand_pose)
             # calculate the cost of having the object in sight
             if self.cost_factors[2] != 0:
                 # extract head pose
-                head_pose = fk_dict['head_tip']
+                head_pose = fk_dict['head']
                 C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
             # if self.cost_factors[2] != 0 and fixed_frames:
             #     # calculate cost based on the fixed frames
@@ -318,11 +318,11 @@ class RebaOptimization(object):
             fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
             # extract hand pose and human jacobian
             if side == 0:
-                hand_pose = fk_dict['right_hand_tip']
+                hand_pose = fk_dict['right_hand']
                 jac_hand = self.model.jacobian('right_arm', js, use_quaternion=True)
                 group_name = 'right_arm'
             else:
-                hand_pose = fk_dict['left_hand_tip']
+                hand_pose = fk_dict['left_hand']
                 jac_hand = self.model.jacobian('left_arm', js, use_quaternion=True)
                 group_name = 'left_arm'
             # calculate the cost specific to the task
@@ -331,7 +331,7 @@ class RebaOptimization(object):
             # calculate the cost of having the object in sight
             if self.cost_factors[2] != 0:
                 # extract head pose
-                head_pose = fk_dict['head_tip']
+                head_pose = fk_dict['head']
                 jac_head = self.model.jacobian('head', js, use_quaternion=True)
                 jac_sight = self.jacobian_sight_cost(self.object_pose, head_pose, jac_head)
         # calculate REBA jacobian
