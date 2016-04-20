@@ -22,7 +22,7 @@ class RebaOptimization(object):
         self.reba = RebaAssess()
         self.previous_joints = []
         # initialize task dependant informations
-        self.safety_dist = [[0.5, 1.5], [-10., 10.], [-10, 10]]
+        self.safety_dist = [[0.4, 1.], [-10., 10.], [0.2, 10]]
         self.object_pose = []
         self.set_screwing_parameters(0.42, 0.2)
 
@@ -280,7 +280,12 @@ class RebaOptimization(object):
             if self.cost_factors[2] != 0:
                 # extract head pose
                 head_pose = fk_dict['head']
-                C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
+                # if the task is received the model look at its hand
+                if self.task == 'receive':
+                    C_sight = self.calculate_sight_cost(hand_pose[0], head_pose)
+                # otherwise it looks at the object
+                else:
+                    C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
             # if self.cost_factors[2] != 0 and fixed_frames:
             #     # calculate cost based on the fixed frames
             #     C_fixed_frame = self.calculate_fixed_frame_cost(chains, fixed_frames)
@@ -358,7 +363,7 @@ class RebaOptimization(object):
         for i in range(nb_points):
             # call optimization from scipy
             res = minimize(self.cost_function, init_joints,
-                           jac=self.jacobian_cost_function,
+                           # jac=self.jacobian_cost_function,
                            args=(side, use_velocity, fixed_joints, ),
                            method='L-BFGS-B',
                            bounds=joint_limits)

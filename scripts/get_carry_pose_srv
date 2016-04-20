@@ -1,31 +1,86 @@
 #!/usr/bin/env python
 import rospy
 from thr_infrastructure_msgs.srv import GetCarryPose, GetCarryPoseResponse
-import yaml
-import roslib.packages
-import transformations
 from geometry_msgs.msg import PoseStamped
+import yaml
+import rospkg
+import transformations
+import json
+import tf
 
 
-def handle_carry_pose_requests(req):
-    if req.type == 'fixed':
-        pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
+class CarryPoseSrv(object):
+    def __init__(self):
+        self.rospack = rospkg.RosPack()
+        self.tfl = tf.TransformListener()
+        self.tfb = tf.TransformBroadcaster()
+        rospy.Service('thr/get_carry_pose', GetCarryPose, self.handle_carry_pose_requests)
+        self.init_poses()
+
+    def init_poses(self):
+        # get fixed pose from config file
+        pkg_dir = self.rospack.get_path("reba_optim")
         with open(pkg_dir+'/config/fixed_pose.yaml', 'r') as datafile:
             data = yaml.load(datafile)
-        # convert data to Posestamped
-        pose = transformations.list_to_pose(data)
-        pose.header.frame_id = 'base'
-        pose.header.stamp = rospy.get_rostime()
-    else:
-        pose = PoseStamped()
-    return GetCarryPoseResponse(object_pose=pose)
+        # convert data to PoseStamped
+        self.fixed_pose = transformations.list_to_pose(data)
+        self.fixed_pose.header.frame_id = 'base'
+        self.fixed_pose.header.stamp = rospy.get_rostime()
 
+        self.human_poses = {}
+        # get relative pose from config file
+        with open(pkg_dir+'/config/relative_pose.json') as datafile:
+            self.human_poses['relative'] = json.load(datafile)
 
-def main():
-    rospy.init_node('get_carry_pose_srv')
-    rospy.Service('thr/get_carry_pose', GetCarryPose, handle_carry_pose_requests)
-    print "Ready to receive carry request"
-    rospy.spin()
+        # get reba pose from config file
+        with open(pkg_dir+'/config/reba_pose.json') as datafile:
+            self.human_poses['reba'] = json.load(datafile)
+
+        # # get desired pose from config file
+        # with open(pkg_dir+'/config/desired_pose.yaml', 'r') as datafile:
+        #     self.human_poses['desired'] = yaml.load(datafile)
+
+    def handle_carry_pose_requests(self, req):
+        if req.type == 'fixed':
+            pose = self.fixed_pose
+            success = True
+        else:
+            # open file of poses for shapeo object
+            pkg_dir = self.rospack.get_path("thr_scenes")
+            with open(pkg_dir+'/config/shapeo/poses.json') as datafile:
+                data = json.load(datafile)
+            # get the supposed pose of the hand
+            ObjTHand = data['/shapeo']['carry'][req.laterality][req.shape]
+            HandTObj = transformations.inverse_transform(ObjTHand)
+            # get the current user pose
+            try:
+                self.tfl.waitForTransform('base', '/human/tracker/base', rospy.Time(), rospy.Duration(5.0))
+                BaseTHuman = self.tfl.lookupTransform('base', '/human/tracker/base', rospy.Time(0))
+                # get the humand hand wrt to human base
+                HumanTHand = self.human_poses[req.type][req.laterality]
+                # apply chain rule of transformations
+                pose = transformations.multiply_transform(BaseTHuman, HumanTHand)
+                pose = transformations.multiply_transform(pose, HandTObj)
+                # publish it
+                self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/shapeo/'+req.type, 'base')
+                # convert pose to PoseStamped
+                pose = transformations.list_to_pose(pose)
+                pose.header.frame_id = 'base'
+                pose.header.stamp = rospy.get_rostime()
+                success = True
+            # if the human base is not seen send a failure
+            # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            except Exception:
+                success = False
+                pose = PoseStamped()
+        return GetCarryPoseResponse(success=success, object_pose=pose)
+
+    def run(self):
+        rospy.spin()
+
 
 if __name__ == '__main__':
-    main()
+    rospy.init_node('get_carry_pose_srv')
+    c = CarryPoseSrv()
+    print "Ready to receive carry request"
+    c.run()
