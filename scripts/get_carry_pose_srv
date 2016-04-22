@@ -28,9 +28,18 @@ class CarryPoseSrv(object):
         self.fixed_pose.header.stamp = rospy.get_rostime()
 
         self.human_poses = {}
-        # get relative pose from config file
+        # calculate relative pose from torso and arm length
+        human_lengths = rospy.get_param('/human/lengths')
+        x = 2 / 3 * (human_lengths['forearm_length'] + human_lengths['upper_arm_length'])
+        y = 0.1
+        z = human_lengths['spine_down_length'] + human_lengths['spine_up_length']
+        # get orientation from demonstration
         with open(pkg_dir + '/config/relative_pose.json') as datafile:
-            self.human_poses['relative'] = json.load(datafile)
+            poses = json.load(datafile)
+        # add it to the dictionnary of poses
+        self.human_poses['relative'] = {}
+        self.human_poses['relative']['right'] = [[x, -y, z], poses['right'][1]]
+        self.human_poses['relative']['left'] = [[x, y, z], poses['left'][1]]
 
         # get reba pose from config file
         with open(pkg_dir + '/config/reba_pose.json') as datafile:
