@@ -20,7 +20,7 @@ class CarryPoseSrv(object):
     def init_poses(self):
         # get fixed pose from config file
         pkg_dir = self.rospack.get_path("reba_optim")
-        with open(pkg_dir+'/config/fixed_pose.yaml', 'r') as datafile:
+        with open(pkg_dir + '/config/fixed_pose.yaml', 'r') as datafile:
             data = yaml.load(datafile)
         # convert data to PoseStamped
         self.fixed_pose = transformations.list_to_pose(data)
@@ -29,11 +29,11 @@ class CarryPoseSrv(object):
 
         self.human_poses = {}
         # get relative pose from config file
-        with open(pkg_dir+'/config/relative_pose.json') as datafile:
+        with open(pkg_dir + '/config/relative_pose.json') as datafile:
             self.human_poses['relative'] = json.load(datafile)
 
         # get reba pose from config file
-        with open(pkg_dir+'/config/reba_pose.json') as datafile:
+        with open(pkg_dir + '/config/reba_pose.json') as datafile:
             self.human_poses['reba'] = json.load(datafile)
 
         # # get desired pose from config file
@@ -47,22 +47,25 @@ class CarryPoseSrv(object):
         else:
             # open file of poses for shapeo object
             pkg_dir = self.rospack.get_path("thr_scenes")
-            with open(pkg_dir+'/config/shapeo/poses.json') as datafile:
+            with open(pkg_dir + '/config/shapeo/poses.json') as datafile:
                 data = json.load(datafile)
             # get the supposed pose of the hand
             ObjTHand = data['/shapeo']['carry'][req.laterality][req.shape]
             HandTObj = transformations.inverse_transform(ObjTHand)
             # get the current user pose
             try:
-                self.tfl.waitForTransform('base', '/human/tracker/base', rospy.Time(), rospy.Duration(5.0))
+                self.tfl.waitForTransform('base', '/human/tracker/base', rospy.Time(), rospy.Duration(0.5))
                 BaseTHuman = self.tfl.lookupTransform('base', '/human/tracker/base', rospy.Time(0))
                 # get the humand hand wrt to human base
                 HumanTHand = self.human_poses[req.type][req.laterality]
+
                 # apply chain rule of transformations
                 pose = transformations.multiply_transform(BaseTHuman, HumanTHand)
+                self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/shapeo/hand', 'base')
+
                 pose = transformations.multiply_transform(pose, HandTObj)
                 # publish it
-                self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/shapeo/'+req.type, 'base')
+                self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/shapeo/' + req.type, 'base')
                 # convert pose to PoseStamped
                 pose = transformations.list_to_pose(pose)
                 pose.header.frame_id = 'base'

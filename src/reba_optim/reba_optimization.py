@@ -22,7 +22,7 @@ class RebaOptimization(object):
         self.reba = RebaAssess()
         self.previous_joints = []
         # initialize task dependant informations
-        self.safety_dist = [[0.4, 1.], [-10., 10.], [0.2, 10]]
+        self.safety_dist = [[0.3, 0.6], [-0.1, 0.1], [0.1, 10]]
         self.object_pose = []
         self.set_screwing_parameters(0.42, 0.2)
 
