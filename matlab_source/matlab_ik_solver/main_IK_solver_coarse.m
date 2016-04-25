@@ -11,19 +11,7 @@ robot = initialize_vrep_baxter('elbow_down');
 %robot = initialize_vrep_baxter('elbow_up');
 
 
-if 0
-    if 0 % letter A
-        [T, gt] = load_data3D_letterA(nTraj);
-    elseif 0
-        [T] =  load_data3D_arc(0.25, -0.3, nTraj);
-    elseif 1
-        [Tc, screwc] =  load_screw_data();    
-    end
-else
-    
-end
 obst=[];
-
 if 0
     Thandover = ik.readEntityCoordinate('handoverPosition');
     save('testHandover.mat', 'Thandover')
@@ -31,9 +19,18 @@ else
     load('testHandover.mat');
 end
 
+Thandover(1,4) = Thandover(1,4)+0.5;
+Thandover(2,4) = Thandover(2,4)-0.0;
+Thandover(3,4) = Thandover(3,4)-0.0;
+Thandover= Thandover*se3(0, d2r(-90), 0, 0, 0, 0);
+
 robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('Dummy_target'), 1)
 
-    
+
+if Thandover(1,4) <= 0.75
+    Thandover(1,4) = 0.75;
+end
+
 % create a trajectory from initial pose to final one
 % ==================================================
 T = robot.goTo(robot.TrestPosture, Thandover, 100);
@@ -41,7 +38,7 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
 
 %% run on each shelf
 
- k = 1;
+    k = 1;
 
     nTraj = size(T,3);
 
@@ -63,12 +60,12 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
     % keep trajectory floating at intial and final states
     DMP{k}.initialGuessStart(vp.init(1:3,4) );
     DMP{k}.initialGuessEnd(vp.finl(1:3,4) )  ;
-    if 1% fix trajectory at the start
+    if 1  % fix trajectory at the start
         DMP{k}.initialGuessStart(vp.init(1:3,4));
         DMP{k}.lockInitialState();
         robot.nTrajConnect = []; % no need to connect trajectories.
     end
-    if 1% fix trajectory at the end
+    if 0  % fix trajectory at the end
         DMP{k}.initialGuessEnd(vp.finl(1:3,4));
         DMP{k}.lockFinalState();    
     end
@@ -78,7 +75,8 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
 
     DMP{k}.automatic_cov_update = 0;
 
-    nUpdates = 5; nRollOut = 25;
+    nUpdates = 20 ;
+    nRollOut = 10;
     param.fixViaPointPoses   = 1;    % 1: is usually the standard use when the orientations 
                                      % are already given by the task. 0: means
                                      % that the orientation that results from
@@ -86,12 +84,13 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
                                      % instead.
     param.allowDMPShapeChange = 1;  % 1: DMP{k} weights are effective
     param.plotRollOuts=1;
-    param.costWeight.similarity  = 1;
+    param.costWeight.similarity  = 0;
     param.costWeight.obstacle    = 0;
-    param.costWeight.viaPoint    = 0;
+    param.costWeight.startGoal   = 0;
     param.costWeight.viaPointMid = 0;
-    param.costWeight.odometry    = 10000000;
-    param.costWeight.IK          = 100;
+    param.costWeight.odometry    = 1e3;
+    param.costWeight.objectXdist = 0; % penalize object for being close to the robot
+    param.costWeight.IK          = 1e9;
     
     if 0%  k>1 % warm-start of next optimization
         DMP{k-1}.restart;
@@ -103,10 +102,29 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
     
     [DMP{k}] = main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param, 0);
 
+    
+% h = restartFigure( [], T, obst, vp, robot);
+% robot.nTraj = 10;
+% nUpdates = 5; nRollOut = 10;
+% main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param,0);
 
+
+DMP{k}.restart;
+h = restartFigure( [], T, obst, vp, robot);
 robot.nTraj = 200;
 nUpdates = 1; nRollOut = 1;
 main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param, 1);
+
+break
+
+% get current position and use as rest posture
+param.hfig = gcf;
+homogTransfPlot( DMP{k}.TrollOut, param)
+
+
+Thandover =  DMP{k}.TrollOut(:,:,end)
+
+
 
 
 

@@ -49,8 +49,9 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
                 robot.costIK(j)=0; ikerrorTraj=0; robot.costIK_clean=0;
             end
             DMP.cost(j, (j-nRollOut), [param.costWeight.similarity ...
-                     param.costWeight.obstacle param.costWeight.viaPoint...
-                     param.costWeight.viaPointMid  param.costWeight.odometry]);        
+                     param.costWeight.obstacle param.costWeight.startGoal...
+                     param.costWeight.viaPointMid  param.costWeight.odometry...
+                     param.costWeight.objectXdist]);        
             toc
         end
         disp(' ');
@@ -83,6 +84,10 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
         if i==1
             legend({'total', 'vP', 'startEnd', 'simil', 'obst', 'odom'}, 'Location','northwest'); 
         end
+
+        
+        robot.sendTargetCartesianCoordinates(DMP.theta_mean_Frame(10:12)', tr2rpy(DMP.refOrientation(:,:,end)), robot.getHandle('handoverPosition'), 1);
+    
         
         figure(h.figcostIK)
         subplot(2,1,1);
@@ -101,7 +106,9 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
 %         stopFlag = myKeyPressFcn(hFig);
 %         if stopFlag
 %            i = nUpdates+1; 
-%         end          
+%         end 
+
+%keyboard
     end
        
     

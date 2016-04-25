@@ -10,6 +10,7 @@ classdef Isoemp_dmp_task < Isoemp_dmp
         cost_clean
         cost_startEnd
         cost_odometry
+        cost_closeToRobot
 
     end
     methods
@@ -52,8 +53,15 @@ classdef Isoemp_dmp_task < Isoemp_dmp
             odometry = cumsum(abs(diff(xyz(1,:)))) + cumsum(abs(diff(xyz(2,:)))) + cumsum(abs(diff(xyz(3,:))));            
             Codometry = w(5)*sum(odometry);
             
+
+            % heuristic. Try to do the handover at some distance from the
+            % robot.
+            CtooCloseToRobot= 0;
+            if xyz(1,end) <= 0.75
+                CtooCloseToRobot = w(6);
+            end            
             
-            obj.cost_total(j) =  CstartEnd + Csimilarity + Cobstacle + CviaPoint + Codometry;
+            obj.cost_total(j) =  CstartEnd + Csimilarity + Cobstacle + CviaPoint + Codometry + CtooCloseToRobot;
 
 
             
@@ -66,6 +74,7 @@ classdef Isoemp_dmp_task < Isoemp_dmp
                 obj.cost_similarity = [obj.cost_similarity Csimilarity];
                 obj.cost_obstacle   = [obj.cost_obstacle   Cobstacle];
                 obj.cost_odometry   = [obj.cost_odometry   Codometry];
+                obj.cost_closeToRobot  = [obj.cost_closeToRobot   CtooCloseToRobot];
             end
         end 
         
@@ -79,6 +88,7 @@ classdef Isoemp_dmp_task < Isoemp_dmp
             obj.cost_total=[];
             obj.cost_clean=[];
             obj.cost_odometry=[];
+            obj.cost_closeToRobot=[];
             
             obj.restart_main;
         end     

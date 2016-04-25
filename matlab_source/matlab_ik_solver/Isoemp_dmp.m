@@ -49,7 +49,7 @@ classdef Isoemp_dmp < handle
 
                 %                        x         y        z      roll    pitch    yawl
             obj.theta_mean_Frame    = [  0         0        0        0       0       0                0         0       0              0   0       0 ];
-            obj.theta_Sigma_Frame   = [  0.0005   0.0005  0.0005   [  0      0       15 ]*pi/180     1*[0.0125 0.0125  0.0125]      1*[0.0125 0.0125  0.0125] ];
+            obj.theta_Sigma_Frame   = [  0.000   0.000  0.000     [  0.20     0.20      2 ]*pi/180     1*[0.0125 0.0125  0.0125]    0.5*[0.0125 0.0125  0.0125] ];
             obj.theta_Cov_Frame =  diag(obj.theta_Sigma_Frame);
             
             if mod(nTraj,10)
@@ -63,9 +63,24 @@ classdef Isoemp_dmp < handle
             obj.theta_mean_dmpy = [zeros(1,nTheta)];
             obj.theta_mean_dmpz = [zeros(1,nTheta)];
 
-            obj.theta_Cov_dmpx = diag(linspace(1,1000,nTheta));
-            obj.theta_Cov_dmpy = diag(linspace(1,1000,nTheta));
-            obj.theta_Cov_dmpz = diag(linspace(1,1000,nTheta));            
+            % create the covariance matrix to perturb the dmp parameters
+            if 0 % old method is linear
+                obj.theta_Cov_dmpx = diag(linspace(1,1000,nTheta));
+                obj.theta_Cov_dmpy = diag(linspace(1,1000,nTheta));
+                obj.theta_Cov_dmpz = diag(linspace(1,1000,nTheta));
+            else % perturbe exponentially according to dmp phase Z
+                Z = exp(-[1:(nTheta)]/((nTheta)*0.2 )) ;
+                Z = 1./Z;
+                Z = Z-Z(1)+1;
+                amplit = 0.01*5000; % maximum amplitue of noise
+                Z = amplit*Z/(Z(end)-Z(1));                
+%                 figurew
+%                 plot(linspace(1,1000,nTheta))
+%                 plot(Z, 'r')
+                obj.theta_Cov_dmpx = diag(Z);
+                obj.theta_Cov_dmpy = diag(Z);
+                obj.theta_Cov_dmpz = diag(Z);                
+            end
         
         end
 
@@ -136,12 +151,16 @@ classdef Isoemp_dmp < handle
                 letterAr(:,:,k) = oTa*[ obj.refTraj(:,:,k) ];
             end
             
-
-            letterArXYZ = squeeze(letterAr(1:3,4,:));
+            if 1 % original formulation
+                letterArXYZ = squeeze(letterAr(1:3,4,:));
+            else
+                letterArXYZ = squeeze(letterAr(1:3,4,:));
+            end
             
             if allowDMPShapeChange % adapt shape by dmp                
               
                 param.nTraj = obj.nTraj;
+                param.alphaBetaFactor = 4;
 
                 % regress DMP on transformed letter
                 xdmp   = dmp_regression(letterArXYZ(1,:), param);
@@ -153,6 +172,9 @@ classdef Isoemp_dmp < handle
                 zdmp = dmp_regression(letterArXYZ(3,:), param);
                 zdmp.w = zdmp.w + obj.theta_mean_pert_dmpz(j,:)';
 
+                paramgen.timeFactorForSteadyState = 1.75;
+                t_normalized = linspace(0,1,numel(letterArXYZ(1,:)));
+                
                 % generalize
                 paramgen.xi = thetaF(7);
                 paramgen.xf = thetaF(10);
@@ -165,6 +187,26 @@ classdef Isoemp_dmp < handle
                 paramgen.xi = thetaF(9);    
                 paramgen.xf = thetaF(12);
                 z2    =  dmp_generalize(zdmp, paramgen);
+
+                % include the final oscilating behavior in the trajectory
+                xyz2 = interp1(linspace(0,1,numel(z2)), [x2' y2' z2'], t_normalized );
+                
+                x2 = xyz2(:,1)';
+                y2 = xyz2(:,2)';
+                z2 = xyz2(:,3)';
+
+%                 figurew
+%                 plot([ letterArXYZ(1,:)   letterArXYZ(1,end)*ones(1,50) ], 'bo-')
+%                 plot(x2, 'r.-')                 
+%                 
+%                 figurew
+%                 plot([ letterArXYZ(2,:)   letterArXYZ(2,end)*ones(1,50) ], 'bo-')
+%                 plot(y2, 'r.-') 
+%                 
+%                 figurew
+%                 plot([ letterArXYZ(3,:)   letterArXYZ(3,end)*ones(1,50) ], 'bo-')
+%                 plot(z2, 'r.-') 
+                
                 
                 if fixViaPointPoses % keep rotations fixed according to refTraj
                     for k=1:numel(obj.refTraj(1,1,:))

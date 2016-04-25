@@ -292,19 +292,23 @@ methods
     function obj = simStop( obj )
         obj.vrep.simxStopSimulation(obj.clientID, obj.vrep.simx_opmode_oneshot_wait);
         pause(0.1);
-    end      
+    end    
     
-end
-
-methods (Static)
-
-    function out = goTo(Tstart, Tend, nTraj)
+    
+    function out = goTo(obj, Tstart, Tend, nTraj)
     % Linear interpolation of homog transf matrices
     % in XYZ with quaternion interpolation for the rotations
     %
-        x_ = linspace(Tstart(1,4), Tend(1,4), nTraj);
-        y_ = linspace(Tstart(2,4), Tend(2,4), nTraj);
-        z_ = linspace(Tstart(3,4), Tend(3,4), nTraj);
+    
+        if 0
+            x_ = linspace(Tstart(1,4), Tend(1,4), nTraj);
+            y_ = linspace(Tstart(2,4), Tend(2,4), nTraj);
+            z_ = linspace(Tstart(3,4), Tend(3,4), nTraj);
+        else
+            x_ = obj.goToJointTrapez(Tstart(1,4), Tend(1,4), nTraj, []);
+            y_ = obj.goToJointTrapez(Tstart(2,4), Tend(2,4), nTraj, []);
+            z_ = obj.goToJointTrapez(Tstart(3,4), Tend(3,4), nTraj, []);
+        end
         
         % buid the input homog. transf. matrices
         for k =1:nTraj
@@ -320,11 +324,44 @@ methods (Static)
         out = traj;        
     end
     
-    function out = goToJointTrapez(qstart, qend, nTraj)
-%         
-%         for j=1:7
-%             out(:,j) = linspace(qstart(j), qend(j), nTraj)';
-%         end
+    
+end
+
+
+
+    
+methods (Static)
+
+
+    
+    function yf  = goToJointTrapez(xi, xf, nSteps, rates)
+        
+        if isempty(rates)
+            rates = 0.25;
+        end
+
+        nStart = round(nSteps*rates(1));
+        yd1 = linspace(0, 1, nStart);
+        yd3 = yd1(end:-1:1);
+        yd2 = linspace(1,1,nSteps-2*(nStart));
+
+        yd = [yd1 yd2 yd3];
+
+        y = cumsum(yd);
+        y = y/max(y);
+
+        amp = xf-xi;
+        yf = (xi+y*amp)';
+
+        dbg=0;
+        if dbg
+            figurew('vel profile');
+            plot(yd);
+            plot(y, 'r');
+
+            figurew('final sol');
+            plot(yf, sty('b', 'o', 2));
+        end   
  
     end
     

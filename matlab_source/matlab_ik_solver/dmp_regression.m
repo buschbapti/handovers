@@ -107,11 +107,16 @@ function [dmp] = dmp_regression(demoOr, param)
     target = demo(end).*ones(size(demo));
     
     % compute the transformation function values: canonical system
-    Z = zeros(size(demo));  Z(1) = 1;
-    for i = 2:length(demo),
-        Z(i) = Z(i-1)-hmp.alpha_z*Z(i-1)*tau*dt;
+    if 0
+        Z = zeros(size(demo));  Z(1) = 1;
+        for i = 2:numel(demo),
+            Z(i) = Z(i-1)-hmp.alpha_z*Z(i-1)*tau*dt;
+        end
+    else
+        Z = exp(-[1:numel(demo)]/(numel(demo)*0.2 )) ;
     end
-
+    
+    
     % Following the paper
     Eq7.hi = -hmp.h*ones(1,length(demo));
     Eq7.zMinusCi = ones(length(hmp.c),1)*Z - hmp.c*ones(1,length(demo));
@@ -119,6 +124,8 @@ function [dmp] = dmp_regression(demoOr, param)
     % weighting functions
     PSI = exp(  Eq7.hi.* ( Eq7.zMinusCi.^2 )  );    
   
+
+    
     miolo1 = hmp.beta_g*(target-demo) - demo_d/tau;
     fdemo  = demo_dd/tau^2 - hmp.alpha_g*(miolo1);
     fdemo  = fdemo/abs(  hmp.A  );   

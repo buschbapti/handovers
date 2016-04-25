@@ -3,12 +3,13 @@ function h = createFig(gtxyzTraj, xyzOriginal, obst, vp )
     h.figcost    = figurew('cost_DMP');
     set_fig_position([0.0781 0.682 0.202 0.28]);
     
-    h.figcostIK    = figurew('cost_IK'); set_fig_position([0.264 0.025 0.293 0.776]);
+    h.figcostIK    = figurew('cost_IK'); 
+    set_fig_position([0.264 0.025 0.145 0.498]);
     subplot(2,1,1); grid on; hold on;
     subplot(2,1,2); grid on; hold on;
 
     h.fig = figurewe('Cartesian'); 
-    set_fig_position([0.558 0.0722 0.382 0.895]);
+    set_fig_position([-0.025 0.202 0.301 0.532]);
     plot3(xyzOriginal(1,:), xyzOriginal(2,:), xyzOriginal(3,:), sty(lightRGB(3), [], 0.015, '-'));
     if ~isempty(gtxyzTraj)
         plot3(gtxyzTraj(1,:), gtxyzTraj(2,:), gtxyzTraj(3,:), sty([0.9 0.9 0.9], 'o', 0.1, 'none', 3 ) );
