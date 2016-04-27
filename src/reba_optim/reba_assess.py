@@ -58,8 +58,8 @@ class RebaAssess(object):
 
     def init_coeffs(self):
         # calculated from the notebook
-        self.A_coeff = [0.03822852,  0.75622637,  0.7621335]
-        self.B_coeff = [0.06068095,  0.68147439, 0.03933057]
+        self.A_coeff = [0.03822852, 0.75622637, 0.7621335]
+        self.B_coeff = [0.06068095, 0.68147439, 0.03933057]
 
     def reba_logger_init(self, deque_size):
         # create list of keys
@@ -76,7 +76,7 @@ class RebaAssess(object):
                 self.reba_log[k] = []
             else:
                 self.reba_log[k] = deque(maxlen=deque_size)
-            self.reba_log[k+"_windowed"] = 0.0
+            self.reba_log[k + "_windowed"] = 0.0
 
     def init_poly_fit(self):
         # legs
@@ -159,21 +159,21 @@ class RebaAssess(object):
     def save_score(self, key, score):
         self.reba_log[key].append(score)
         # calculate the windowed score
-        w_score = sum(self.reba_log[key])/len(self.reba_log[key])
-        self.reba_log[key+"_windowed"] = w_score
+        w_score = sum(self.reba_log[key]) / len(self.reba_log[key])
+        self.reba_log[key + "_windowed"] = w_score
 
     def save_score_dict(self, data):
         for key, value in data.iteritems():
             self.save_score(key, value)
 
     def windowed_score(self, key):
-        return self.reba_log[key+"_windowed"]
+        return self.reba_log[key + "_windowed"]
 
     def serialize_logger(self):
         data = {}
         for k in self.keys:
             data[k] = list(self.reba_log[k])
-            data[k+'_windowed'] = self.reba_log[k+'_windowed']
+            data[k + '_windowed'] = self.reba_log[k + '_windowed']
         return data
 
     def save_log(self):
@@ -195,24 +195,24 @@ class RebaAssess(object):
     def init_reba_dict(self):
         self.reba_dict = {}
         for i in range(2):
-            self.reba_dict['neck_'+str(i)] = {'group_name': 'neck', 'index': i}
-            self.reba_dict['waist_'+str(i)] = {'group_name': 'trunk', 'index': i}
-            self.reba_dict['right_shoulder_'+str(i)] = {'group_name': 'shoulders', 'index': i}
-            self.reba_dict['left_shoulder_'+str(i)] = {'group_name': 'shoulders', 'index': i}
-            self.reba_dict['right_wrist_'+str(i)] = {'group_name': 'wrists', 'index': i}
-            self.reba_dict['left_wrist_'+str(i)] = {'group_name': 'wrists', 'index': i}
+            self.reba_dict['neck_' + str(i)] = {'group_name': 'neck', 'index': i}
+            self.reba_dict['spine_' + str(i)] = {'group_name': 'trunk', 'index': i}
+            self.reba_dict['right_shoulder_' + str(i)] = {'group_name': 'shoulders', 'index': i}
+            self.reba_dict['left_shoulder_' + str(i)] = {'group_name': 'shoulders', 'index': i}
+            self.reba_dict['right_wrist_' + str(i)] = {'group_name': 'wrists', 'index': i}
+            self.reba_dict['left_wrist_' + str(i)] = {'group_name': 'wrists', 'index': i}
         # add missing joints
-        self.reba_dict['neck_'+str(2)] = {'group_name': 'neck', 'index': 2}
-        self.reba_dict['waist_'+str(2)] = {'group_name': 'trunk', 'index': 2}
-        self.reba_dict['right_shoulder_'+str(2)] = {'group_name': 'shoulders', 'index': 2}
-        self.reba_dict['left_shoulder_'+str(2)] = {'group_name': 'shoulders', 'index': 2}
+        self.reba_dict['neck_' + str(2)] = {'group_name': 'neck', 'index': 2}
+        self.reba_dict['spine_' + str(2)] = {'group_name': 'trunk', 'index': 2}
+        self.reba_dict['right_shoulder_' + str(2)] = {'group_name': 'shoulders', 'index': 2}
+        self.reba_dict['left_shoulder_' + str(2)] = {'group_name': 'shoulders', 'index': 2}
         self.reba_dict['right_knee'] = {'group_name': 'legs', 'index': 0}
         self.reba_dict['left_knee'] = {'group_name': 'legs', 'index': 0}
-        self.reba_dict['right_elbow_'+str(0)] = {'group_name': 'elbows', 'index': 0}
-        self.reba_dict['left_elbow_'+str(0)] = {'group_name': 'elbows', 'index': 1}
+        self.reba_dict['right_elbow_' + str(0)] = {'group_name': 'elbows', 'index': 0}
+        self.reba_dict['left_elbow_' + str(0)] = {'group_name': 'elbows', 'index': 1}
         # specific case elbow twisting which is considered as wrist in reba
-        self.reba_dict['right_elbow_'+str(1)] = {'group_name': 'wrists', 'index': 2}
-        self.reba_dict['left_elbow_'+str(1)] = {'group_name': 'wrists', 'index': 2}
+        self.reba_dict['right_elbow_' + str(1)] = {'group_name': 'wrists', 'index': 2}
+        self.reba_dict['left_elbow_' + str(1)] = {'group_name': 'wrists', 'index': 2}
 
     def deriv_assess_posture(self, joints, names):
         # calculate each score individually
@@ -221,7 +221,7 @@ class RebaAssess(object):
             if names[i] in self.reba_dict:
                 reba_group = self.reba_dict[names[i]]
                 deriv.append(self.assign_value(joints[i],
-                                               'deriv_'+reba_group['group_name'],
+                                               'deriv_' + reba_group['group_name'],
                                                reba_group['index']))
             else:
                 deriv.append(0)
