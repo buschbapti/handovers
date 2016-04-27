@@ -1,30 +1,38 @@
 #!/usr/bin/env python
 import rospy
-import yaml
+import json
 import sys
 import tf
 import roslib.packages
 
 
-def main():
-    obj = sys.argv[1]
-    base = sys.argv[2]
-    filename = sys.argv[3]
+def main(laterality):
+    obj = '/human/tracker/' + laterality + '_hand'
+    base = '/human/tracker/base'
+    filename = 'desired_pose'
 
     tfl = tf.TransformListener()
     rospy.sleep(1)
     # get the transformation
+    while not tfl.canTransform(base, obj, rospy.Time(0)) and not rospy.is_shutdown():
+        rospy.logerr("Transformation not visible please move a bit")
+        rospy.sleep(1)
     try:
         transform = tfl.lookupTransform(base, obj, rospy.Time(0))
     except Exception, e:
         raise
 
+    rospy.loginfo("Transformation recorded succesfully")
+
+    desired_dict = {}
+    desired_dict[laterality] = transform
     pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
 
-    with open(pkg_dir+'/config/'+filename+'.yaml', 'w') as outfile:
-        yaml.dump(transform, outfile, default_flow_style=True)
+    with open(pkg_dir+'/config/'+filename+'.json', 'w') as outfile:
+        json.dump(desired_dict, outfile, sort_keys=True, indent=4)
     return 0
 
 if __name__ == '__main__':
     rospy.init_node('record_pose')
-    main()
+    laterality = rospy.get_param('/human/laterality')
+    main(laterality)
