@@ -1,6 +1,4 @@
 import numpy as np
-from sympy.mpmath import *
-from sympy import *
 from human_moveit_config.human_model import HumanModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
@@ -22,14 +20,14 @@ class RebaOptimization(object):
         self.reba = RebaAssess()
         self.previous_joints = []
         # initialize task dependant informations
-        self.safety_dist = [[0.3, 0.6], [-0.1, 0.1], [0.1, 10]]
+        self.safety_dist = [[0.3, 0.6], [-0.1, 0.1], [0.15, 10]]
         self.object_pose = []
         self.set_screwing_parameters(0.42, 0.2)
 
     def set_screwing_parameters(self, object_length, screwdriver_length):
         self.object_length = object_length
         self.screwdriver_length = screwdriver_length
-        self.circle_rad = ((self.object_length+self.screwdriver_length)/2)
+        self.circle_rad = ((self.object_length + self.screwdriver_length) / 2)
         self.circle_rad2 = self.circle_rad**2
 
         print self.circle_rad
@@ -43,11 +41,11 @@ class RebaOptimization(object):
     def calculate_fixed_frame_cost(self, chains, fixed_frames):
         def caclulate_distance_to_frame(pose, ref_pose, coeffs):
             # calculate distance in position
-            d_position = np.linalg.norm(pose[0]-ref_pose[0])
+            d_position = np.linalg.norm(pose[0] - ref_pose[0])
             # calculate distance in quaternions
-            d_rotation = math.acos(2*np.inner(pose[1], ref_pose[1])**2-1)
+            d_rotation = math.acos(2 * np.inner(pose[1], ref_pose[1])**2 - 1)
             # return the sum of both
-            return coeffs[0]*d_position + coeffs[1]*d_rotation
+            return coeffs[0] * d_position + coeffs[1] * d_rotation
 
         def get_frame_pose(frame_name):
             key_found = False
@@ -73,7 +71,7 @@ class RebaOptimization(object):
             if frame_reference is not None:
                 ref = get_frame_pose(frame_reference)
                 # calculate the transformation between them
-                link = inverse(ref)*fixed
+                link = inverse(ref) * fixed
                 return link
             return fixed
         cost = 0
@@ -102,14 +100,14 @@ class RebaOptimization(object):
     def fixed_joints_cost(self, joint_array, dict_values):
         cost = 0
         for key, value in dict_values.iteritems():
-            cost += (joint_array[self.model.get_joint_names().index(key)]-value)**2
+            cost += (joint_array[self.model.get_joint_names().index(key)] - value)**2
         return cost
 
     def jacobian_fixed_joints_cost(self, joint_array, dict_values):
         jac_fix = np.zeros(len(self.model.get_joint_names()))
         for key, value in dict_values.iteritems():
             index = self.model.get_joint_names().index(key)
-            jac_fix[index] = 2*(joint_array[index]-value)
+            jac_fix[index] = 2 * (joint_array[index] - value)
         return jac_fix
 
     # def return_value(self, joint_array, key):
@@ -123,17 +121,25 @@ class RebaOptimization(object):
     #     assign_per_leg('right')
     #     assign_per_leg('left')
 
-    def calculate_sight_cost(self, obj_pos, head_frame):
+    def calculate_sight_cost(self, obj_pose, head_frame, angle_tresh=1.0472):
         # calculate head to object vector
-        OH = np.array(head_frame[0]) - np.array(obj_pos)
+        OH = np.array(head_frame[0]) - np.array(obj_pose[0])
         OH /= np.linalg.norm(OH)
         # calculate head x vector
         q = np.array(head_frame[1])
-        Hx = [1-2*q[1]*q[1]-2*q[2]*q[2],
-              2*(q[0]*q[1]+q[2]*q[3]),
-              2*(q[0]*q[2]-q[1]*q[3])]
+        Hx = [1 - 2 * q[1] * q[1] - 2 * q[2] * q[2],
+              2 * (q[0] * q[1] + q[2] * q[3]),
+              2 * (q[0] * q[2] - q[1] * q[3])]
         # check colinearity between the two vectors
-        cost = np.dot(OH, Hx) + 1
+        cost = 2 * (np.dot(OH, Hx) + 1)
+        # check additional constraints based on object orientation
+        qo = np.array(obj_pose[1])
+        z_obj = [2 * (qo[0] * qo[2] + qo[1] * qo[3]),
+                 2 * (qo[1] * qo[2] - qo[0] * qo[3]),
+                 1 - 2 * qo[0] * qo[0] - 2 * qo[1] * qo[1]]
+        theta = math.acos(np.dot(-np.array(Hx), z_obj))
+        if abs(theta) > angle_tresh:
+            cost += 1 * abs(theta - angle_tresh)
         return cost
 
     def jacobian_sight_cost(self, obj_pos, head_frame, jac_human):
@@ -143,21 +149,23 @@ class RebaOptimization(object):
         OH = diff_OH
         # calculate head x vector
         q = np.array(head_frame[1])
-        Hx = [1-2*q[1]*q[1]-2*q[2]*q[2],
-              2*(q[0]*q[1]+q[2]*q[3]),
-              2*(q[0]*q[2]-q[1]*q[3])]
+        Hx = [1 - 2 * q[1] * q[1] - 2 * q[2] * q[2],
+              2 * (q[0] * q[1] + q[2] * q[3]),
+              2 * (q[0] * q[2] - q[1] * q[3])]
         # calculate jacobian of the cost
         for i in range(len(jac_cost)):
             dOH = np.zeros(3)
             d_norm_OH = 0
-            dHx = [-4*jac_human[5, i]*q[1]-4*jac_human[6, i]*q[2],
-                   2*(q[0]*jac_human[5, i]+jac_human[4, i]*q[1] + q[2]*jac_human[3, i]+jac_human[6, i]*q[3]),
-                   2*(q[0]*jac_human[6, i]+jac_human[4, i]*q[2] - q[1]*jac_human[3, i]-jac_human[5, i]*q[3])]
+            dHx = [- 4 * jac_human[5, i] * q[1] - 4 * jac_human[6, i] * q[2],
+                   2 * (q[0] * jac_human[5, i] + jac_human[4, i] * q[1] + q[2] *
+                   jac_human[3, i] + jac_human[6, i] * q[3]),
+                   2 * (q[0] * jac_human[6, i] + jac_human[4, i] * q[2] - q[1] *
+                   jac_human[3, i] - jac_human[5, i] * q[3])]
             for d in range(3):
-                d_norm_OH += jac_human[d, i]*diff_OH[d]
+                d_norm_OH += jac_human[d, i] * diff_OH[d]
                 dOH[d] = jac_human[d, i]
                 # calculate derivative of the dot product
-                jac_cost[i] += OH[d]*dHx[d] + dOH[d]*Hx[d]
+                jac_cost[i] += OH[d] * dHx[d] + dOH[d] * Hx[d]
             d_norm_OH /= norm_OH
             # add the derivative of the norm
             jac_cost[i] += d_norm_OH
@@ -172,7 +180,7 @@ class RebaOptimization(object):
         return jac_sight
 
     def calculate_velocity_cost(self, joints, dt=0.1):
-        dq = (joints-self.previous_joints)/dt
+        dq = (joints - self.previous_joints) / dt
         if dq.max() > 5:
             return 1000
         else:
@@ -192,34 +200,34 @@ class RebaOptimization(object):
         # check the height
         z_diff = (self.object_pose[2] - fk_hand[0][2])**2
         # check that the hand lie on a circle with object as center
-        circle_diff = ((fk_hand[0][0]-self.object_pose[0])**2 +
-                       (fk_hand[0][1]-self.object_pose[1])**2 -
+        circle_diff = ((fk_hand[0][0] - self.object_pose[0])**2 +
+                       (fk_hand[0][1] - self.object_pose[1])**2 -
                        self.circle_rad2)**2
         return circle_diff + z_diff
 
     def jacobian_screwing_cost(self, fk_hand, jac_human):
         jac_cost = np.zeros(len(jac_human[0]))
-        z_diff = -2*(self.object_pose[2] - fk_hand[0][2])
+        z_diff = -2 * (self.object_pose[2] - fk_hand[0][2])
         x_diff = fk_hand[0][0] - self.object_pose[0]
         y_diff = fk_hand[0][1] - self.object_pose[1]
-        circle_diff = 4*((fk_hand[0][0]-self.object_pose[0])**2 +
-                         (fk_hand[0][1]-self.object_pose[1])**2 -
-                         self.circle_rad2)
+        circle_diff = 4 * ((fk_hand[0][0] - self.object_pose[0])**2 +
+                           (fk_hand[0][1] - self.object_pose[1])**2 -
+                           self.circle_rad2)
         for i in range(len(jac_cost)):
-            jac_z = jac_human[2, i]*z_diff
-            jac_circle = (jac_human[0, i]*x_diff + jac_human[1, i]*y_diff)*circle_diff
+            jac_z = jac_human[2, i] * z_diff
+            jac_circle = (jac_human[0, i] * x_diff + jac_human[1, i] * y_diff) * circle_diff
             jac_cost[i] = jac_z + jac_circle
         return jac_cost
 
     def calculate_reaching_cost(self, fk_hand):
-        return np.sum((self.object_pose-fk_hand[0])**2)
+        return np.sum((self.object_pose - fk_hand[0])**2)
 
     def jacobian_reaching_cost(self, fk_hand, jac_human):
         jac_cost = np.zeros(len(jac_human[0]))
         pos_diff = fk_hand[0] - self.object_pose
         for i in range(len(jac_cost)):
             for j in range(3):
-                jac_cost[i] += jac_human[j, i]*pos_diff[j]
+                jac_cost[i] += jac_human[j, i] * pos_diff[j]
             jac_cost[i] *= 2
         return jac_cost
 
@@ -261,7 +269,7 @@ class RebaOptimization(object):
         # check the necessity to perform the operations
         if (self.cost_factors[1] != 0 or
             self.cost_factors[2] != 0 or
-           (self.cost_factors[3] != 0 and fixed_frames)):
+           (self.cost_factors[3] != 0 and self.fixed_frames)):
             # get current state
             js = self.model.get_current_state()
             # set the new joint values
@@ -282,7 +290,7 @@ class RebaOptimization(object):
                 head_pose = fk_dict['head']
                 # if the task is received the model look at its hand
                 if self.task == 'receive':
-                    C_sight = self.calculate_sight_cost(hand_pose[0], head_pose)
+                    C_sight = self.calculate_sight_cost(hand_pose, head_pose)
                 # otherwise it looks at the object
                 else:
                     C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
@@ -298,9 +306,9 @@ class RebaOptimization(object):
         # return the final score
         cost = (C_fixed_joints +
                 C_velocity +
-                self.cost_factors[0]*C_reba +
-                self.cost_factors[1]*C_task +
-                self.cost_factors[2]*C_sight)
+                self.cost_factors[0] * C_reba +
+                self.cost_factors[1] * C_task +
+                self.cost_factors[2] * C_sight)
 
         print cost
         return cost
@@ -314,7 +322,7 @@ class RebaOptimization(object):
         # check the necessity to perform the operations
         if (self.cost_factors[1] != 0 or
             self.cost_factors[2] != 0 or
-           (self.cost_factors[3] != 0 and fixed_frames)):
+           (self.cost_factors[3] != 0 and self.fixed_frames)):
             # get current state
             js = self.model.get_current_state()
             # set the new joint values
@@ -343,9 +351,9 @@ class RebaOptimization(object):
         if self.cost_factors[0] != 0:
             jac_reba = self.jacobian_reba_cost(q)
         jac_cost = (jac_fix +
-                    self.cost_factors[0]*jac_reba +
-                    self.cost_factors[1]*jac_task +
-                    self.cost_factors[2]*jac_sight)
+                    self.cost_factors[0] * jac_reba +
+                    self.cost_factors[1] * jac_task +
+                    self.cost_factors[2] * jac_sight)
         return jac_cost
 
     def optimize_posture(self, joints, task, side=0, nb_points=1, fixed_joints={}):
@@ -373,5 +381,5 @@ class RebaOptimization(object):
             joint_traj.append(init_joints)
 
             print res
-            print "point "+str(i)+" calculated"
+            print "point " + str(i) + " calculated"
         return joint_traj

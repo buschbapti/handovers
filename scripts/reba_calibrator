@@ -12,7 +12,7 @@ if __name__ == "__main__":
     rospack = rospkg.RosPack()
     # initialize tf
     tfl = tf.TransformListener()
-    optim = RebaOptimization(cost_factors=[1, 100, 5, 0])
+    optim = RebaOptimization(cost_factors=[1, 200, 5, 0])
     rospy.loginfo('Calibrating the hand-over location.')
     # optimize the hand-over location with the specified parameters for both sides
     tf_hip = []
@@ -66,9 +66,6 @@ if __name__ == "__main__":
     fixed_joints['left_ankle_0'] = 0.
     fixed_joints['left_ankle_1'] = 0.
 
-    # fix spine joints as it is not used in REBA calculation
-    fixed_joints['spine'] = 0.
-
     output_dict = {}
     for i in range(2):
         # optimize to find the pose of the hand
@@ -78,14 +75,14 @@ if __name__ == "__main__":
         # set the new joint values
         js.position = res[-1]
         # add a small twist for the elbow
-        js.position[js.name.index(side[i]+'_elbow_1')] = (js.position[js.name.index(side[i]+'_elbow_1')] +
-                                                          (-1)**(i+1)*1.0472)
+        # js.position[js.name.index(side[i]+'_elbow_1')] = (js.position[js.name.index(side[i]+'_elbow_1')] +
+        #                                                   (-1)**(i+1)*1.0472)
         optim.model.send_state(js)
         # get the pose of the hand wrt to the base
         fk = optim.model.forward_kinematic(js)
-        output_dict[side[i]] = fk[side[i]+'_hand']
+        output_dict[side[i]] = fk[side[i] + '_hand']
     # write the config file
     rospack = rospkg.RosPack()
     pkg_dir = rospack.get_path("reba_optim")
-    with open(pkg_dir+'/config/reba_pose.json', 'w') as outfile:
+    with open(pkg_dir + '/config/reba_pose.json', 'w') as outfile:
         json.dump(output_dict, outfile, sort_keys=True, indent=4)
