@@ -15,9 +15,7 @@ function h = createFig(gtxyzTraj, xyzOriginal, obst, vp )
         plot3(gtxyzTraj(1,:), gtxyzTraj(2,:), gtxyzTraj(3,:), sty([0.9 0.9 0.9], 'o', 0.1, 'none', 3 ) );
     end
     % table
-    plot_workspace(h.fig);
-%     xlim([-0 0.8]); 
-%     ylim([-1.0 -0.2])
+    % plot_workspace(h.fig);
     
     
     % plot start and end

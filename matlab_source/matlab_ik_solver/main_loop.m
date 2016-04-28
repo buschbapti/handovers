@@ -43,6 +43,10 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
             % generate trajectory
             h = DMP.generate_trajectory(h, j, (j-nRollOut), param.plotRollOuts, param.fixViaPointPoses, param.allowDMPShapeChange);
             
+            
+            DMP.TrollOut(:,:,:,j);
+            
+            
             if wIK~=0                
                 [ikerrorTraj, h, q] = robot.IKcost(j, (j-nRollOut), h, DMP.TrollOut(:,:,:,j));
             else

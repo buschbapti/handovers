@@ -49,7 +49,7 @@ classdef Isoemp_dmp < handle
 
                 %                        x         y        z      roll    pitch    yawl
             obj.theta_mean_Frame    = [  0         0        0        0       0       0                0         0       0              0   0       0 ];
-            obj.theta_Sigma_Frame   = [  0.000   0.000  0.000     [  0.20     0.20      2 ]*pi/180     1*[0.0125 0.0125  0.0125]    0.5*[0.0125 0.0125  0.0125] ];
+            obj.theta_Sigma_Frame   = [  0.000   0.000  0.000     0*[  0.20     0.20      2 ]*pi/180     1*[0.0125 0.0125  0.0125]    0.5*[0.0125 0.0125  0.0125] ];
             obj.theta_Cov_Frame =  diag(obj.theta_Sigma_Frame);
             
             if mod(nTraj,10)
@@ -72,7 +72,7 @@ classdef Isoemp_dmp < handle
                 Z = exp(-[1:(nTheta)]/((nTheta)*0.2 )) ;
                 Z = 1./Z;
                 Z = Z-Z(1)+1;
-                amplit = 0.01*5000; % maximum amplitue of noise
+                amplit = 0.00*5000; % maximum amplitue of noise
                 Z = amplit*Z/(Z(end)-Z(1));                
 %                 figurew
 %                 plot(linspace(1,1000,nTheta))
@@ -172,7 +172,7 @@ classdef Isoemp_dmp < handle
                 zdmp = dmp_regression(letterArXYZ(3,:), param);
                 zdmp.w = zdmp.w + obj.theta_mean_pert_dmpz(j,:)';
 
-                paramgen.timeFactorForSteadyState = 1.75;
+                paramgen.timeFactorForSteadyState = 1.0;
                 t_normalized = linspace(0,1,numel(letterArXYZ(1,:)));
                 
                 % generalize
@@ -189,23 +189,12 @@ classdef Isoemp_dmp < handle
                 z2    =  dmp_generalize(zdmp, paramgen);
 
                 % include the final oscilating behavior in the trajectory
-                xyz2 = interp1(linspace(0,1,numel(z2)), [x2' y2' z2'], t_normalized );
-                
-                x2 = xyz2(:,1)';
-                y2 = xyz2(:,2)';
-                z2 = xyz2(:,3)';
-
-%                 figurew
-%                 plot([ letterArXYZ(1,:)   letterArXYZ(1,end)*ones(1,50) ], 'bo-')
-%                 plot(x2, 'r.-')                 
-%                 
-%                 figurew
-%                 plot([ letterArXYZ(2,:)   letterArXYZ(2,end)*ones(1,50) ], 'bo-')
-%                 plot(y2, 'r.-') 
-%                 
-%                 figurew
-%                 plot([ letterArXYZ(3,:)   letterArXYZ(3,end)*ones(1,50) ], 'bo-')
-%                 plot(z2, 'r.-') 
+                if paramgen.timeFactorForSteadyState ~= 1
+                    xyz2 = interp1(linspace(0,1,numel(z2)), [x2' y2' z2'], t_normalized );
+                    x2 = xyz2(:,1)';
+                    y2 = xyz2(:,2)';
+                    z2 = xyz2(:,3)';                    
+                end
                 
                 
                 if fixViaPointPoses % keep rotations fixed according to refTraj

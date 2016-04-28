@@ -35,5 +35,6 @@ function robot =  initialize_vrep_baxter( startElbowConfig )
     % ===========================================
     % Set arm to relaxed position instantaneously
     robot.backToRestPosture(); 
+    robot.setJointAngles(robot.qRestPosture, 1);
 
 end

@@ -9,20 +9,26 @@ addpath('./func_robot_vrep/func_vrep_bridge');
 %ik = initialize_vrep_darias();
 robot = initialize_vrep_baxter('elbow_down');
 %robot = initialize_vrep_baxter('elbow_up');
+%system('~/projects/vrep/V-REP_PRO_EDU_V3_2_2_64_Linux/./vrep.sh   ../matlab_main/myScene.ttt &');
 
+
+
+
+
+%TendEff = create_endeffector_positions_insertion_toy(robot);
 
 obst=[];
 if 0
-    Thandover = ik.readEntityCoordinate('handoverPosition');
+    Thandover = robot.readEntityCoordinate('handoverPosition');
     save('testHandover.mat', 'Thandover')
 else
     load('testHandover.mat');
 end
 
 Thandover(1,4) = Thandover(1,4)+0.5;
-Thandover(2,4) = Thandover(2,4)-0.0;
-Thandover(3,4) = Thandover(3,4)-0.0;
-Thandover= Thandover*se3(0, d2r(-90), 0, 0, 0, 0);
+Thandover(2,4) = Thandover(2,4)+0.55;
+% Thandover(3,4) = Thandover(3,4)-0.0;
+%Thandover= Thandover*se3(0, d2r(-90), 0, 0, 0, 0);
 
 robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('Dummy_target'), 1)
 
@@ -39,6 +45,8 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
 %% run on each shelf
 
     k = 1;
+    robot.nTraj = 10;
+    robot.nTrajConnect = 1;
 
     nTraj = size(T,3);
 
@@ -82,7 +90,7 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
                                      % that the orientation that results from
                                      % the ref. frame search will be used
                                      % instead.
-    param.allowDMPShapeChange = 1;  % 1: DMP{k} weights are effective
+    param.allowDMPShapeChange = 1;   % 1: DMP{k} weights are effective
     param.plotRollOuts=1;
     param.costWeight.similarity  = 0;
     param.costWeight.obstacle    = 0;
@@ -108,12 +116,14 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
 % nUpdates = 5; nRollOut = 10;
 % main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param,0);
 
-
 DMP{k}.restart;
 h = restartFigure( [], T, obst, vp, robot);
 robot.nTraj = 200;
 nUpdates = 1; nRollOut = 1;
 main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param, 1);
+
+
+
 
 break
 
