@@ -4,7 +4,6 @@ from .reba_assess import RebaAssess
 from scipy.optimize import minimize
 import math
 import transformations
-from kinect_skeleton_publisher.joint_transformations import sympy_to_numpy, inverse
 from copy import copy
 
 
@@ -47,45 +46,45 @@ class RebaOptimization(object):
             # return the sum of both
             return coeffs[0] * d_position + coeffs[1] * d_rotation
 
-        def get_frame_pose(frame_name):
-            key_found = False
-            side = 0
-            while not key_found and side < len(self.model.end_effectors):
-                # check if the fixed frame is an end-effector
-                if frame_name == self.model.end_effectors[side]:
-                    # pose is the last transform of the chain
-                    pose = chains[side][-1]
-                    key_found = True
-                elif frame_name in self.active_joints[side]:
-                    # get the frame from the chain
-                    pose = chains[side][self.active_joints[side].index(frame_name)]
-                    key_found = True
-            # convert the pose to tuple
-            pose = transformations.m4x4_to_list(sympy_to_numpy(pose))
-            return pose
+        # def get_frame_pose(frame_name):
+        #     key_found = False
+        #     side = 0
+        #     while not key_found and side < len(self.model.end_effectors):
+        #         # check if the fixed frame is an end-effector
+        #         if frame_name == self.model.end_effectors[side]:
+        #             # pose is the last transform of the chain
+        #             pose = chains[side][-1]
+        #             key_found = True
+        #         elif frame_name in self.active_joints[side]:
+        #             # get the frame from the chain
+        #             pose = chains[side][self.active_joints[side].index(frame_name)]
+        #             key_found = True
+        #     # convert the pose to tuple
+        #     pose = transformations.m4x4_to_list(sympy_to_numpy(pose))
+        #     return pose
 
-        def get_pose_in_reference_frame(frame_name, frame_reference=None):
-            # get frame in hip reference
-            fixed = get_frame_pose(frame_name)
-            # if reference frame is specified get it
-            if frame_reference is not None:
-                ref = get_frame_pose(frame_reference)
-                # calculate the transformation between them
-                link = inverse(ref) * fixed
-                return link
-            return fixed
-        cost = 0
-        if fixed_frames:
-            for key in fixed_frames:
-                frame_dict = fixed_frames[key]
-                coeffs = frame_dict['coeffs']
-                des_pose = frame_dict['desired_pose']
-                ref_frame = frame_dict['reference_frame']
-                # get the pose of the fixed frame
-                pose = self.get_pose_in_reference_frame(key, ref_frame)
-                # calculate the distance wrt to the fixed frame
-                cost += caclulate_distance_to_frame(pose, des_pose, coeffs)
-        return cost
+        # def get_pose_in_reference_frame(frame_name, frame_reference=None):
+        #     # get frame in hip reference
+        #     fixed = get_frame_pose(frame_name)
+        #     # if reference frame is specified get it
+        #     if frame_reference is not None:
+        #         ref = get_frame_pose(frame_reference)
+        #         # calculate the transformation between them
+        #         link = inverse(ref) * fixed
+        #         return link
+        #     return fixed
+        # cost = 0
+        # if fixed_frames:
+        #     for key in fixed_frames:
+        #         frame_dict = fixed_frames[key]
+        #         coeffs = frame_dict['coeffs']
+        #         des_pose = frame_dict['desired_pose']
+        #         ref_frame = frame_dict['reference_frame']
+        #         # get the pose of the fixed frame
+        #         pose = self.get_pose_in_reference_frame(key, ref_frame)
+        #         # calculate the distance wrt to the fixed frame
+        #         cost += caclulate_distance_to_frame(pose, des_pose, coeffs)
+        # return cost
 
     def calculate_reba_cost(self, joints):
         # use the reba library to calculate the cost
