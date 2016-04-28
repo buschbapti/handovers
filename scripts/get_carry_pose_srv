@@ -46,36 +46,31 @@ class CarryPoseSrv(object):
         with open(pkg_dir + '/config/reba_pose.json') as datafile:
             self.human_poses['reba'] = json.load(datafile)
 
-        # # get desired pose from config file
-        # with open(pkg_dir+'/config/desired_pose.yaml', 'r') as datafile:
-        #     self.human_poses['desired'] = yaml.load(datafile)
+        # get desired pose from config file
+        with open(pkg_dir + '/config/desired_pose.json') as datafile:
+            self.human_poses['desired'] = json.load(datafile)
 
     def handle_carry_pose_requests(self, req):
-        if req.type == 'fixed':
+        if req.method == 'fixed':
             pose = self.fixed_pose
             success = True
         else:
             # open file of poses for shapeo object
             pkg_dir = self.rospack.get_path("thr_scenes")
-            with open(pkg_dir + '/config/shapeo/poses.json') as datafile:
+            with open(pkg_dir + '/config/' + req.object + '/poses.json') as datafile:
                 data = json.load(datafile)
             # get the supposed pose of the hand
-            ObjTHand = data['/shapeo']['carry'][self.laterality][req.shape]
+            ObjTHand = data['/' + req.object]['carry'][self.laterality][req.location]
             HandTObj = transformations.inverse_transform(ObjTHand)
             # get the current user pose
             try:
                 self.tfl.waitForTransform('base', '/human/tracker/base', rospy.Time(), rospy.Duration(0.5))
                 BaseTHuman = self.tfl.lookupTransform('base', '/human/tracker/base', rospy.Time(0))
                 # get the humand hand wrt to human base
-                HumanTHand = self.human_poses[req.type][self.laterality]
-
+                HumanTHand = self.human_poses[req.method][self.laterality]
                 # apply chain rule of transformations
                 pose = transformations.multiply_transform(BaseTHuman, HumanTHand)
-                self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/shapeo/hand', 'base')
-
                 pose = transformations.multiply_transform(pose, HandTObj)
-                # publish it
-                self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/shapeo/' + req.type, 'base')
                 # convert pose to PoseStamped
                 pose = transformations.list_to_pose(pose)
                 pose.header.frame_id = 'base'
