@@ -1,4 +1,4 @@
-function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagReplayOnly)
+function [DMP, T, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagReplayOnly)
 
 %     try close(hFig); end
 %     hFig = figurew('stopButton');
@@ -48,7 +48,7 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
             
             
             if wIK~=0                
-                [ikerrorTraj, h, q] = robot.IKcost(j, (j-nRollOut), h, DMP.TrollOut(:,:,:,j));
+                [ikerrorTraj, h, T, q] = robot.IKcost(j, (j-nRollOut), h, DMP.TrollOut(:,:,:,j));
             else
                 robot.costIK(j)=0; ikerrorTraj=0; robot.costIK_clean=0;
             end

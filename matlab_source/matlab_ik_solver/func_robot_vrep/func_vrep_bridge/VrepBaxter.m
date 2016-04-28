@@ -64,20 +64,60 @@ methods
 
     end
     
-    function [ikerrorTraj, h, q] = IKcost(obj, j, flagClean, h, T)
+    function [ikerrorTraj, h, T2, q] = IKcost(obj, j, flagClean, h, T)
 
         % quickly resample the trajectory to make IK faster
-        dt = round(numel(T(1,1,:))/obj.nTraj);
-        id = 1:dt:numel(T(1,1,:));
-        if id(end)~=numel(T(1,1,:))
-            id(end+1) =numel(T(1,1,:));
+        dt =  numel(T(1,1,:))/obj.nTraj  ;
+
+        if dt >= 1
+            % the number of points will be certainly
+            % decreased to make IK faster. This may not be the case if you want
+            % to replay the trajector slowly
+            % =======================================================            
+            dt = round(dt);
+            
+            id = 1:dt:numel(T(1,1,:));
+            if id(end)~=numel(T(1,1,:))
+                id(end+1) =numel(T(1,1,:));
+            end
+            T2 = T(:,:,id);
+
+            if ~isempty(obj.nTrajConnect)     % add connecting trajectory
+                T_connect = obj.goTo(obj.TrestPosture, T2(:,:,1), obj.nTrajConnect);
+                T2 = cat(3, T_connect, T2);
+            end
         end
-        T2 = T(:,:,id);
-          
-        if ~isempty(obj.nTrajConnect)     % add connecting trajectory
-            T_connect = obj.goTo(obj.TrestPosture, T2(:,:,1), obj.nTrajConnect);
-            T2 = cat(3, T_connect, T2);
+        
+        if dt < 1 
+            % this is only used to increase the trajectory size beyond 
+            % the initial demonstration. Useful to replay slowly or
+            % to resample. interpolate quaternions
+            dt = 1;
+            id = 1:dt:numel(T(1,1,:));
+            if id(end)~=numel(T(1,1,:))
+                id(end+1) =numel(T(1,1,:));
+            end
+            T2 = T(:,:,id);
+            if ~isempty(obj.nTrajConnect)     % add connecting trajectory
+                T_connect = obj.goTo(obj.TrestPosture, T2(:,:,1), obj.nTrajConnect);
+                T2 = cat(3, T_connect, T2);
+            end
+            
+            % extra step: resample to higher samplings
+            for t=1:numel(T2(1,1,:))
+                q_ = Quaternion(T2(:,:,t));
+                pose(t,:) = [T2(1:3,4,t)' q_.s q_.v];
+            end
+            pose_ = interp1(linspace(0,1,numel(pose(:,1))),  pose, linspace(0,1, obj.nTraj  ));
+            for t=1:obj.nTraj
+                T2(:,:,t) = quaternion2homogTransfMatrix( pose_(t,4:end) ) + [zeros(4,3)  [pose_(t,1:3)'; 0] ];
+            end
+            for t = 1:10 % repeat a few times to allow IK to damp
+                T2(:,:,end+1) = T2(:,:,end);
+            end
+            
         end
+
         ik_hist = obj.IK(T2, 0);        
         q = ik_hist.q;
         obj.costIK(j) = sum(ik_hist.ne.^2);
