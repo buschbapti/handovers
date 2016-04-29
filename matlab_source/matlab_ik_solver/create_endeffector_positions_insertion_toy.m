@@ -10,10 +10,10 @@ function TendEff = create_endeffector_positions_insertion_toy()
         load('testHandover.mat');
     end
 
-    if 0 % Perturb initial guess position
-        Thandover(1,4) = Thandover(1,4)+0.5;
-        Thandover(2,4) = Thandover(2,4)+0.55;
-        Thandover(3,4) = Thandover(3,4)-0.250;
+    if 1 % Perturb initial guess position
+        %Thandover(1,4) = Thandover(1,4)+0.5;
+        Thandover(2,4) = Thandover(2,4)+0.25;
+        %Thandover(3,4) = Thandover(3,4)-0.250;
     end
     %Thandover= Thandover*se3(0, d2r(-90), 0, 0, 0, 0);
     

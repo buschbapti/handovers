@@ -17,6 +17,9 @@ classdef VrepBaxter < VrepAgent
         tableHeight = -0.475; % meters
         
         elbowConfig
+        
+        qmin
+        qmax
     end
 
 methods
@@ -37,7 +40,10 @@ methods
         
         % store elbow configuration
         load('elbowInitConfig.mat');
-        obj.elbowConfig = elbow;        
+        obj.elbowConfig = elbow;
+        
+        [~, obj.qmax, obj.qmin] = aux_useful_baxter_info();
+        obj.qmin = d2r(obj.qmin); obj.qmax = d2r(obj.qmax);
         
     end   
     
@@ -57,6 +63,26 @@ methods
         end
     end
 
+    function [limitHitMin, limitHitMax] = checkJointLimit(obj, q, checkPlot)
+       limitHitMin  = ~(obj.qmin < min(q));
+       limitHitMax  = ~(obj.qmax > max(q));
+       
+       if checkPlot
+           if sum(limitHitMin) > 0 || sum(limitHitMax) > 0
+               c_ = distinguishable_colors(7);
+               figurew('jointLimits');
+               for j=1:7
+                    subplot(4,2,j); grid on; hold on;
+                    plot(q(:,j), sty(c_(j,:), [], 2) );
+                    text(numel(q(:,j))+1, q(end,j), num2str(j) );
+                    plot( [1:numel(q(:,1))], ones(1, numel(q(:,1))).*obj.qmin(j),  sty(c_(j,:), [], 2, '--') );
+                    plot( [1:numel(q(:,1))], ones(1, numel(q(:,1))).*obj.qmax(j),  sty(c_(j,:), [], 2, '--') );
+               end
+           end
+       end
+       
+    end
+    
     function restart(obj)
 
         obj.costIK=[];

@@ -1,4 +1,9 @@
 
+%
+% 
+%
+%
+%
 
 clear; clc; close all; dbstop if error;
 %clear classes;
@@ -11,7 +16,6 @@ robot = initialize_vrep_baxter('elbow_down');
 %robot = initialize_vrep_baxter('elbow_up');
 %system('~/projects/vrep/V-REP_PRO_EDU_V3_2_2_64_Linux/./vrep.sh   ../matlab_main/myScene.ttt &');
 
-
 TendEff = create_endeffector_positions_insertion_toy();
 
 if 0
@@ -23,12 +27,20 @@ if 0
 end
 
 
+disp('** set ik damping to 0.1 in vrep**')
+pause(1);
+
 obst=[];
 
 % run on each position
 % =======================================
 load('sol.mat');
-for k =  4%numel(sol)+1: numel(TendEff)
+
+if 0 % restart from zero
+    clear sol
+    sol = [];
+end
+for k =  numel(sol)+1: numel(TendEff)
     
     
     Thandover = TendEff{k};
@@ -40,7 +52,7 @@ for k =  4%numel(sol)+1: numel(TendEff)
 
     % create a trajectory from initial pose to final one
     % ==================================================
-    T = robot.goTo(robot.TrestPosture, Thandover, 100);
+    T = robot.goTo(robot.TrestPosture, Thandover, 200);
 
     
     robot.nTraj = 5;

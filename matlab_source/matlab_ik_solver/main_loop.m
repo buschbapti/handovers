@@ -11,9 +11,12 @@ function [DMP, T, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagR
         nUpdates=1;
         nRollOut=1;
     end    
-            
+        
+    global hdebug
     while i <= nUpdates
         tic
+        
+        
 
         DMP.getCovGain(nUpdates, i);
 
@@ -27,6 +30,12 @@ function [DMP, T, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagR
         h.plotCart = [];         h.plotCartIK = [];
 
         for j = 1:nRollOut
+            
+            try
+                close(hdebug)
+            end
+            
+            
             tic
             if j==nRollOut                
                 DMP.theta_mean_pert_Frame(j,:) = DMP.theta_mean_Frame;

@@ -1,4 +1,27 @@
 function ycut =  dmp_generalize(dmp, param)
+%
+%
+% param.timeFactorForSteadyState = 1.25
+%   means that the original dmp time will be extended by 25% to allow the
+%   damping to stop the motion. 
+%
+% param.timeFactorForSteadyState = 1.0
+%   means that the motion will stop at the original dmp time, no matter if
+%   the desired goal was reached or not
+%
+% if you dont specify "timeFactorForSteadyState" the code will stop
+% automatically when two conditions are satisfied:
+%   1. the original dmp time has passed
+%   2. the generalized dmp is close enough to the desired goal.
+%   This method does not guarantee that motion will be at zero velocity
+%   at the code return. But it should be slow enough that many controllers
+%   wont complain.
+%
+%   If condition 2 cannot be respected, then it will be stopped at the
+%   default value of param.timeFactorForSteadyState which is set at 2.5
+%
+%
+
 
     if ~isfield(param, 'xi');
         param.xi = dmp.xi;
@@ -10,7 +33,11 @@ function ycut =  dmp_generalize(dmp, param)
         param.forcingFunctionScaling = 0; % assume no scaling based on amplitude
     end
     if ~isfield(param, 'timeFactorForSteadyState');
-        param.timeFactorForSteadyState = 1.0;
+        % whichever comes first will stop the loop
+        param.timeFactorForSteadyState = 2.5; % maximum time allowed
+        minError = 0.01; % minimum error to stop the integration
+    else
+        minError = -999;
     end
 
     xi  = param.xi;  % initial condition
@@ -57,6 +84,12 @@ function ycut =  dmp_generalize(dmp, param)
     end
     tsum = 0;
 
+    
+    dbg=0;
+    if dbg
+        figurew
+    end
+    
     for i = 1:length(t_run)
         
         % move target
@@ -84,6 +117,16 @@ function ycut =  dmp_generalize(dmp, param)
         y(i)   = hmp.x1;
         yd(i)  = hmp.x1_d;
         ydd(i) = hmp.x1_dd;
+
+        if dbg
+            plot(i, y(i), sty('b', 'o', 2, [], 10) );        
+        end
+        if ( abs(hmp.target-y(i)) < minError ) && ( i > (dmp.movement_time/dt) )
+            if dbg
+                plot(i, hmp.target, sty('r', 'o', 2, [], 10) ); 
+            end
+            break
+        end
         
     end
     

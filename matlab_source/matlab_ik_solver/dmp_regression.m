@@ -50,6 +50,9 @@ function [dmp] = dmp_regression(demoOr, param)
 %
     
 %% Fill in the entries that the user did not bother
+    if ~exist('param', 'var')
+        param=[];
+    end
 
     if ~isfield(param, 'xi');
         param.xi = demoOr(1); 
@@ -60,10 +63,17 @@ function [dmp] = dmp_regression(demoOr, param)
     if ~isfield(param, 'nTraj');
         param.nTraj = 200; % assume 500 as a magic number
     end    
-    if ~isfield(param, 'alphaBetaFactor');
-        param.alphaBetaFactor=4;
+%     if ~isfield(param, 'alphaBetaFactor');
+%         param.alphaBetaFactor=4;
+%     end   
+    
+    if ~isfield(param, 'Dgain')
+        param.Dgain = 100;
     end
-
+    if ~isfield(param, 'Pgain')
+        param.Pgain = 1000;
+    end
+    
 %%   
     nTraj = param.nTraj;    
     
@@ -84,8 +94,8 @@ function [dmp] = dmp_regression(demoOr, param)
     %% Initialize primitives with some heuristics
     % ====================================================
     % critically damped
-    hmp.alpha_g  = 15;
-    hmp.beta_g   = hmp.alpha_g/param.alphaBetaFactor;
+    hmp.alpha_g  = param.Dgain;
+    hmp.beta_g   = param.Pgain/hmp.alpha_g;    
     hmp.alpha_z  = 5;
     
     tau = 1./movement_time;
