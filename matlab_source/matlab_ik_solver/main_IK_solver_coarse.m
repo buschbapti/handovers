@@ -1,4 +1,9 @@
 
+%
+% 
+%
+%
+%
 
 clear; clc; close all; dbstop if error;
 %clear classes;
@@ -11,41 +16,46 @@ robot = initialize_vrep_baxter('elbow_down');
 %robot = initialize_vrep_baxter('elbow_up');
 %system('~/projects/vrep/V-REP_PRO_EDU_V3_2_2_64_Linux/./vrep.sh   ../matlab_main/myScene.ttt &');
 
+TendEff = create_endeffector_positions_insertion_toy();
+
+if 0
+    robot.sendTargetCartesianCoordinates(TendEff{1}(1:3,4), tr2rpy(TendEff{1}), robot.getHandle('Dummy_target'), 1)
+    robot.sendTargetCartesianCoordinates(TendEff{2}(1:3,4), tr2rpy(TendEff{2}), robot.getHandle('Dummy_target'), 1)
+    robot.sendTargetCartesianCoordinates(TendEff{3}(1:3,4), tr2rpy(TendEff{3}), robot.getHandle('Dummy_target'), 1)
+    robot.sendTargetCartesianCoordinates(TendEff{4}(1:3,4), tr2rpy(TendEff{4}), robot.getHandle('Dummy_target'), 1)
+    robot.sendTargetCartesianCoordinates(TendEff{5}(1:3,4), tr2rpy(TendEff{5}), robot.getHandle('Dummy_target'), 1)
+end
 
 
-
-
-%TendEff = create_endeffector_positions_insertion_toy(robot);
+disp('** set ik damping to 0.1 in vrep**')
+pause(1);
 
 obst=[];
-if 0
-    Thandover = robot.readEntityCoordinate('handoverPosition');
-    save('testHandover.mat', 'Thandover')
-else
-    load('testHandover.mat');
+
+% run on each position
+% =======================================
+load('sol.mat');
+
+if 0 % restart from zero
+    clear sol
+    sol = [];
 end
+for k =  numel(sol)+1: numel(TendEff)
+    
+    
+    Thandover = TendEff{k};
+    
+    robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('Dummy_target'), 1)
+    if Thandover(1,4) <= 0.75
+        Thandover(1,4) = 0.75;
+    end
 
-Thandover(1,4) = Thandover(1,4)+0.5;
-Thandover(2,4) = Thandover(2,4)+0.55;
-% Thandover(3,4) = Thandover(3,4)-0.0;
-%Thandover= Thandover*se3(0, d2r(-90), 0, 0, 0, 0);
+    % create a trajectory from initial pose to final one
+    % ==================================================
+    T = robot.goTo(robot.TrestPosture, Thandover, 200);
 
-robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('Dummy_target'), 1)
-
-
-if Thandover(1,4) <= 0.75
-    Thandover(1,4) = 0.75;
-end
-
-% create a trajectory from initial pose to final one
-% ==================================================
-T = robot.goTo(robot.TrestPosture, Thandover, 100);
-
-
-%% run on each shelf
-
-    k = 1;
-    robot.nTraj = 10;
+    
+    robot.nTraj = 5;
     robot.nTrajConnect = 1;
 
     nTraj = size(T,3);
@@ -63,25 +73,25 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
 
 
     %% creating dmp ikrobot
-    DMP{k} = Isoemp_dmp_task(vp, obst, nTraj);
+    DMP = Isoemp_dmp_task(vp, obst, nTraj);
 
     % keep trajectory floating at intial and final states
-    DMP{k}.initialGuessStart(vp.init(1:3,4) );
-    DMP{k}.initialGuessEnd(vp.finl(1:3,4) )  ;
+    DMP.initialGuessStart(vp.init(1:3,4) );
+    DMP.initialGuessEnd(vp.finl(1:3,4) )  ;
     if 1  % fix trajectory at the start
-        DMP{k}.initialGuessStart(vp.init(1:3,4));
-        DMP{k}.lockInitialState();
+        DMP.initialGuessStart(vp.init(1:3,4));
+        DMP.lockInitialState();
         robot.nTrajConnect = []; % no need to connect trajectories.
     end
     if 0  % fix trajectory at the end
-        DMP{k}.initialGuessEnd(vp.finl(1:3,4));
-        DMP{k}.lockFinalState();    
+        DMP.initialGuessEnd(vp.finl(1:3,4));
+        DMP.lockFinalState();    
     end
 
-    DMP{k}.refTraj        = T;
-    DMP{k}.refOrientation = robot.goTo(vp.init, vp.finl, numel(T(1,1,:)));
+    DMP.refTraj        = T;
+    DMP.refOrientation = robot.goTo(vp.init, vp.finl, numel(T(1,1,:)));
 
-    DMP{k}.automatic_cov_update = 0;
+    DMP.automatic_cov_update = 0;
 
     nUpdates = 20 ;
     nRollOut = 10;
@@ -90,49 +100,65 @@ T = robot.goTo(robot.TrestPosture, Thandover, 100);
                                      % that the orientation that results from
                                      % the ref. frame search will be used
                                      % instead.
-    param.allowDMPShapeChange = 1;   % 1: DMP{k} weights are effective
+    param.allowDMPShapeChange = 1;   % 1: DMP weights are effective
     param.plotRollOuts=1;
     param.costWeight.similarity  = 0;
     param.costWeight.obstacle    = 0;
-    param.costWeight.startGoal   = 0;
+    param.costWeight.startGoal   = 1e3;
     param.costWeight.viaPointMid = 0;
-    param.costWeight.odometry    = 1e3;
+    param.costWeight.odometry    = 0;
     param.costWeight.objectXdist = 0; % penalize object for being close to the robot
     param.costWeight.IK          = 1e9;
     
-    if 0%  k>1 % warm-start of next optimization
-        DMP{k-1}.restart;
-        DMP{k}.theta_mean_pert_Frame = DMP{k-1}.theta_mean_Frame;
-        DMP{k}.theta_mean_pert_dmpx  = DMP{k-1}.theta_mean_dmpx;
-        DMP{k}.theta_mean_pert_dmpy  = DMP{k-1}.theta_mean_dmpy;
-        DMP{k}.theta_mean_pert_dmpz  = DMP{k-1}.theta_mean_dmpz;  
+    if k > 1 % warm-start of next optimization
+        DMP.theta_mean_pert_Frame = sol{k-1}.DMP.theta_mean_Frame;
+        DMP.theta_mean_pert_dmpx  = sol{k-1}.DMP.theta_mean_dmpx;
+        DMP.theta_mean_pert_dmpy  = sol{k-1}.DMP.theta_mean_dmpy;
+        DMP.theta_mean_pert_dmpz  = sol{k-1}.DMP.theta_mean_dmpz;
+        DMP.theta_Cov_Frame       = DMP.theta_Cov_Frame*0.05;
     end
     
-    [DMP{k}] = main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param, 0);
+    [DMP] = main_loop(robot, DMP,  h, nUpdates, nRollOut, param, 0);
 
+    DMP.restart;
+    h = restartFigure( [], T, obst, vp, robot);
+    robot.nTraj = 200;
+    [~, T, q] = main_loop(robot, DMP,  h, nUpdates, nRollOut, param, 1);
     
-% h = restartFigure( [], T, obst, vp, robot);
-% robot.nTraj = 10;
-% nUpdates = 5; nRollOut = 10;
-% main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param,0);
+keyboard    
+    sol{k}.TendEff = TendEff{k};
+    sol{k}.DMP = DMP;
+    sol{k}.T = T;
+    sol{k}.q = q;
+    sol{k}.param = param;
+    
+    save('sol.mat', 'sol');
+end
 
-DMP{k}.restart;
-h = restartFigure( [], T, obst, vp, robot);
-robot.nTraj = 200;
-nUpdates = 1; nRollOut = 1;
-main_loop(robot, DMP{k},  h, nUpdates, nRollOut, param, 1);
+k=4
+paramFilter.filterOrder = 4; 
+paramFilter.filterFreq = 0.05;
+for j=1:7
+    q(:,j) = smoothf( sol{k}.q(:,j), paramFilter );
+end
+figurew
+plot(sol{k}.q, 'Color', [0.8 0.8 0.8], 'LineWidth', 4)
+plot(q)
 
-
+for t = 1:numel(q(:,1))
+    robot.setJointAngles(q(t,:), 1)
+    pause(0.01)
+end
 
 
 break
 
 % get current position and use as rest posture
 param.hfig = gcf;
-homogTransfPlot( DMP{k}.TrollOut, param)
+homogTransfPlot( DMP.TrollOut, param)
 
 
-Thandover =  DMP{k}.TrollOut(:,:,end)
+Thandover =  DMP.TrollOut(:,:,end)
 
 
 
@@ -141,7 +167,7 @@ Thandover =  DMP{k}.TrollOut(:,:,end)
 break
 
 
-DMP{k}.restart;
+DMP.restart;
 h = restartFigure( [], T, obst, vp, robot);
 
 
@@ -164,7 +190,7 @@ load(['DMP_' num2str(k) 'to' num2str(k) '_coarse.mat']);
 
 ik.nTraj = nTraj;
 nUpdates = 1; nRollOut = 1;
-main_loop(ik, DMP{k},  h, nUpdates, nRollOut, param, 1);
+main_loop(ik, DMP,  h, nUpdates, nRollOut, param, 1);
 
 
 % 

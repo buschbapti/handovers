@@ -28,8 +28,7 @@ for j=1:3
     figure(h.v);
     subplot(3,1,j); hold on; grid on;
     plot( diff( squeeze(Tout(j,4,:))   ), 'bo-'  );
-    paramdmp.alphaBetaFactor=4;
-    d{j} = dmp_regression(squeeze(Tout(j,4,:)), paramdmp);    
+    d{j} = dmp_regression(squeeze(Tout(j,4,:)));    
 end
 
 xyz = [   squeeze(Tout(1,4,:))';  squeeze(Tout(2,4,:))'; squeeze(Tout(3,4,:))'  ] ;
@@ -39,7 +38,7 @@ xf = [xf; xf; xf];
 for n=1:numel(xf(1,:))
     for j=1:3
         
-        d{j} = dmp_regression( xyz(j,:), paramdmp);    
+       % d{j} = dmp_regression( xyz(j,:), paramdmp);    
         
         paramdmp.xf = xyz(j,end)+xf(j,n);
         xyz(j,:) = dmp_generalize( d{j}, paramdmp);

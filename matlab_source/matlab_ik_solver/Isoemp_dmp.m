@@ -72,7 +72,7 @@ classdef Isoemp_dmp < handle
                 Z = exp(-[1:(nTheta)]/((nTheta)*0.2 )) ;
                 Z = 1./Z;
                 Z = Z-Z(1)+1;
-                amplit = 0.00*5000; % maximum amplitue of noise
+                amplit = 0*5000; % maximum amplitue of noise
                 Z = amplit*Z/(Z(end)-Z(1));                
 %                 figurew
 %                 plot(linspace(1,1000,nTheta))
@@ -160,7 +160,6 @@ classdef Isoemp_dmp < handle
             if allowDMPShapeChange % adapt shape by dmp                
               
                 param.nTraj = obj.nTraj;
-                param.alphaBetaFactor = 4;
 
                 % regress DMP on transformed letter
                 xdmp   = dmp_regression(letterArXYZ(1,:), param);
@@ -172,7 +171,6 @@ classdef Isoemp_dmp < handle
                 zdmp = dmp_regression(letterArXYZ(3,:), param);
                 zdmp.w = zdmp.w + obj.theta_mean_pert_dmpz(j,:)';
 
-                paramgen.timeFactorForSteadyState = 1.0;
                 t_normalized = linspace(0,1,numel(letterArXYZ(1,:)));
                 
                 % generalize
@@ -187,13 +185,41 @@ classdef Isoemp_dmp < handle
                 paramgen.xi = thetaF(9);    
                 paramgen.xf = thetaF(12);
                 z2    =  dmp_generalize(zdmp, paramgen);
-
+                
+                if 0
+                    global hdebug;
+                    hdebug = figurew('dmp');
+                    plot(letterArXYZ(1,:), sty([0.8 0.8 0.8], [], 2)   );
+                    plot(x2, sty('r', [], 2)   );
+                    plot(letterArXYZ(2,:), sty([0.8 0.8 0.8], [], 2)   );
+                    plot(y2, sty('g', [], 2)   );
+                    plot(letterArXYZ(3,:), sty([0.8 0.8 0.8], [], 2)   );
+                    plot(z2, sty('b', [], 2)   );                
+                end
+                
                 % include the final oscilating behavior in the trajectory
-                if paramgen.timeFactorForSteadyState ~= 1
+                if 0% paramgen.timeFactorForSteadyState ~= 1
                     xyz2 = interp1(linspace(0,1,numel(z2)), [x2' y2' z2'], t_normalized );
                     x2 = xyz2(:,1)';
                     y2 = xyz2(:,2)';
                     z2 = xyz2(:,3)';                    
+                end
+                if 0
+                    xyz2 = sync_dmps({x2', y2', z2'});
+                    x2 = xyz2(:,1)';
+                    y2 = xyz2(:,2)';
+                    z2 = xyz2(:,3)';  
+                end
+                if 1
+                    if numel(t_normalized)~= numel(x2)
+                        x2 = interp1(linspace(0,1,numel(x2)), [x2'], t_normalized);
+                    end
+                    if numel(t_normalized)~= numel(y2)
+                        y2 = interp1(linspace(0,1,numel(y2)), [y2'], t_normalized);
+                    end
+                    if numel(t_normalized)~= numel(z2)
+                        z2 = interp1(linspace(0,1,numel(z2)), [z2'], t_normalized);
+                    end                    
                 end
                 
                 

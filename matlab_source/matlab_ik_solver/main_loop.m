@@ -1,4 +1,4 @@
-function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagReplayOnly)
+function [DMP, T, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagReplayOnly)
 
 %     try close(hFig); end
 %     hFig = figurew('stopButton');
@@ -11,9 +11,12 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
         nUpdates=1;
         nRollOut=1;
     end    
-            
+        
+    global hdebug
     while i <= nUpdates
         tic
+        
+        
 
         DMP.getCovGain(nUpdates, i);
 
@@ -27,6 +30,12 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
         h.plotCart = [];         h.plotCartIK = [];
 
         for j = 1:nRollOut
+            
+            try
+                close(hdebug)
+            end
+            
+            
             tic
             if j==nRollOut                
                 DMP.theta_mean_pert_Frame(j,:) = DMP.theta_mean_Frame;
@@ -48,7 +57,7 @@ function [DMP, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagRepl
             
             
             if wIK~=0                
-                [ikerrorTraj, h, q] = robot.IKcost(j, (j-nRollOut), h, DMP.TrollOut(:,:,:,j));
+                [ikerrorTraj, h, T, q] = robot.IKcost(j, (j-nRollOut), h, DMP.TrollOut(:,:,:,j));
             else
                 robot.costIK(j)=0; ikerrorTraj=0; robot.costIK_clean=0;
             end
