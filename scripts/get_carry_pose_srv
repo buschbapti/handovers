@@ -60,7 +60,7 @@ class CarryPoseSrv(object):
             with open(pkg_dir + '/config/' + req.object + '/poses.json') as datafile:
                 data = json.load(datafile)
             # get the supposed pose of the hand
-            ObjTHand = data['/' + req.object]['carry'][self.laterality][req.location]
+            ObjTHand = data[req.object]['carry'][self.laterality][req.location]
             HandTObj = transformations.inverse_transform(ObjTHand)
             # get the current user pose
             try:

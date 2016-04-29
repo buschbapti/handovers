@@ -1,7 +1,4 @@
 <launch> 
-  <arg name="debug_handover" default="False" />
-
-  <rosparam command="load" file="$(find reba_optim)/config/right_hand_over_location.yaml" param="/reba/hand_over_location/right"/>
-  <rosparam command="load" file="$(find reba_optim)/config/left_hand_over_location.yaml" param="/reba/hand_over_location/left"/>
-  <node name="reba_server" pkg="reba_optim" type="reba_server" output="screen" required="true"/>
+    <include file="$(find human_moveit_config)/launch/human_tracker.launch"/>
+	<node name="get_carry_pose_srv" pkg="reba_optim" type="get_carry_pose_srv" output="screen" required="True"/>
 </launch>
