@@ -28,26 +28,25 @@ for j=1:3
     figure(h.v);
     subplot(3,1,j); hold on; grid on;
     plot( diff( squeeze(Tout(j,4,:))   ), 'bo-'  );
-    d{j} = dmp_regression(squeeze(Tout(j,4,:)));    
+    d{j} = Dmp(squeeze(Tout(j,4,:))', 'hoffmann');    
 end
 
 xyz = [   squeeze(Tout(1,4,:))';  squeeze(Tout(2,4,:))'; squeeze(Tout(3,4,:))'  ] ;
-xf = [1:1:10];
+xf = [2:1:10];
 xf = [xf; xf; xf];
 
 for n=1:numel(xf(1,:))
+    clear xyz2
     for j=1:3
-        
-       % d{j} = dmp_regression( xyz(j,:), paramdmp);    
-        
         paramdmp.xf = xyz(j,end)+xf(j,n);
-        xyz(j,:) = dmp_generalize( d{j}, paramdmp);
+        xyz2(j,:) = d{j}.generalize(paramdmp);
         figure(h.p);
         subplot(3,1,j); hold on; grid on;    
         plot(  xyz(j,:) , 'ro-'  );    
         figure(h.v); subplot(3,1,j);
         plot(  diff( xyz(j,:) )  , 'ro-');
     end
+    xyz = xyz2;
 end
 
 for t =1: numel(Tout(1,1,:))
