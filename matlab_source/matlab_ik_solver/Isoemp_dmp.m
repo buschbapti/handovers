@@ -162,13 +162,13 @@ classdef Isoemp_dmp < handle
                 param.nTraj = obj.nTraj;
 
                 % regress DMP on transformed letter
-                xdmp   = dmp_regression(letterArXYZ(1,:), param);
+                xdmp   = Dmp(letterArXYZ(1,:), 'hoffmann');
                 xdmp.w = xdmp.w + obj.theta_mean_pert_dmpx(j,:)';
 
-                ydmp = dmp_regression(letterArXYZ(2,:), param);
+                ydmp   = Dmp(letterArXYZ(2,:), 'hoffmann');
                 ydmp.w = ydmp.w + obj.theta_mean_pert_dmpy(j,:)';
 
-                zdmp = dmp_regression(letterArXYZ(3,:), param);
+                zdmp   = Dmp(letterArXYZ(3,:), 'hoffmann');
                 zdmp.w = zdmp.w + obj.theta_mean_pert_dmpz(j,:)';
 
                 t_normalized = linspace(0,1,numel(letterArXYZ(1,:)));
@@ -176,15 +176,15 @@ classdef Isoemp_dmp < handle
                 % generalize
                 paramgen.xi = thetaF(7);
                 paramgen.xf = thetaF(10);
-                x2    =  dmp_generalize(xdmp, paramgen);
+                x2    =  xdmp.generalize(paramgen);
 
                 paramgen.xi = thetaF(8);    
                 paramgen.xf = thetaF(11);
-                y2    =  dmp_generalize(ydmp, paramgen);
+                y2    =  ydmp.generalize(paramgen);
 
                 paramgen.xi = thetaF(9);    
                 paramgen.xf = thetaF(12);
-                z2    =  dmp_generalize(zdmp, paramgen);
+                z2    =  zdmp.generalize(paramgen);
                 
                 if 0
                     global hdebug;

@@ -28,7 +28,8 @@ end
 
 
 disp('** set ik damping to 0.1 in vrep**')
-pause(1);
+disp('** IK weight resolution linear = 1, angular =1 **')
+pause();
 
 obst=[];
 
@@ -36,7 +37,7 @@ obst=[];
 % =======================================
 load('sol.mat');
 
-if 0 % restart from zero
+if 1 % restart from zero
     clear sol
     sol = [];
 end
@@ -94,7 +95,7 @@ for k =  numel(sol)+1: numel(TendEff)
     DMP.automatic_cov_update = 0;
 
     nUpdates = 20 ;
-    nRollOut = 10;
+    nRollOut = 7;
     param.fixViaPointPoses   = 1;    % 1: is usually the standard use when the orientations 
                                      % are already given by the task. 0: means
                                      % that the orientation that results from
@@ -132,8 +133,10 @@ keyboard
     sol{k}.q = q;
     sol{k}.param = param;
     
-    save('sol.mat', 'sol');
+    save('sol2.mat', 'sol');
 end
+
+break
 
 k=4
 paramFilter.filterOrder = 4; 

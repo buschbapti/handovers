@@ -7,6 +7,10 @@ addpath('./func_robot_vrep/func_vrep_bridge');
 robot = initialize_vrep_baxter('elbow_down');
 
 
+disp('** set ik damping to 0.01 in vrep**')
+disp('** IK weight resolution linear = 0, angular =1 **')
+pause
+
 load('sol.mat');
 
 if 0
@@ -30,9 +34,9 @@ end
 for k=   1:numel(sol)
     
     Thandover = sol{k}.T(:,:,end);
-    Thandover(1:3,4) = Thandover(1:3,4) + 0.*[-0.10 0.25 -0.23]'; 
+    Thandover(1:3,4) = Thandover(1:3,4) + [0.10 0.25 -0.23]'; 
     robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('Dummy_target'), 1)
-    %robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('handoverPosition'), 1)
+    robot.sendTargetCartesianCoordinates(Thandover(1:3,4), tr2rpy(Thandover), robot.getHandle('handoverPosition'), 1)
     robot.setJointAngles(sol{k}.q(end,:));
     pause(0.25); % put IK damping 0.01
     qnew = robot.getJointAngles();
@@ -40,13 +44,10 @@ for k=   1:numel(sol)
     % check desired position is achievable
     flag.e = norm(tr2delta( robot.readEntityCoordinate('Dummy_tip'), Thandover ));
     
-    param=[];
-    %param.Pgain = 1000;
-    %param.Dgain = 100;
     for j=1:7
-        d{j} = dmp_regression(sol{k}.q(:,j), param);
+        d{j} = Dmp(sol{k}.q(:,j)', 'hoffmann');
         param.xf = qnew(j);
-        qnewTraj{j} = dmp_generalize(d{j}, param )';
+        qnewTraj{j} = d{j}.generalize(param);
     end
     q = sync_dmps(qnewTraj);
     [flag.limMin, flag.limMax] = robot.checkJointLimit(q, 1);
@@ -56,7 +57,7 @@ for k=   1:numel(sol)
     
     for t = 1:numel(q(:,1))
         robot.setJointAngles(q(t,:), 1)
-        pause(0.0001)
+        pause(0.01)
     end
     
     dbg = 1;
