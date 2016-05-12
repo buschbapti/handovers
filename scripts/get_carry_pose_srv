@@ -89,7 +89,17 @@ class CarryPoseSrv(object):
 
 if __name__ == '__main__':
     rospy.init_node('get_carry_pose_srv')
-    laterality = rospy.get_param('/human/laterality')
+    try:
+        laterality = rospy.get_param('/human/laterality')
+    except KeyError:
+        # ask subject laterality
+        laterality = ''
+        while (laterality != 'right' and laterality != 'left') and not rospy.is_shutdown():
+            rospy.sleep(2)
+            rospy.logwarn('Laterality not defined. What is the subject laterality?')
+            laterality = raw_input()
+        if not rospy.is_shutdown():
+            rospy.set_param('/human/laterality', laterality)
     c = CarryPoseSrv(laterality)
     print "Ready to receive carry request"
     c.run()
