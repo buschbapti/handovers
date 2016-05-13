@@ -31,7 +31,7 @@ class CarryPoseSrv(object):
         self.human_poses = {}
         # calculate relative pose from torso and arm length
         human_lengths = rospy.get_param('/human/lengths')
-        x = 2 / 3 * (human_lengths['forearm_length'] + human_lengths['upper_arm_length'])
+        x = 2.0 / 3.0 * (human_lengths['forearm_length'] + human_lengths['upper_arm_length'])
         y = 0.1
         z = human_lengths['spine_down_length'] + human_lengths['spine_up_length']
         # get orientation from demonstration
@@ -78,7 +78,8 @@ class CarryPoseSrv(object):
                 success = True
             # if the human base is not seen send a failure
             # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            except Exception:
+            except Exception as e:
+                print e
                 success = False
                 pose = PoseStamped()
         return GetCarryPoseResponse(success=success, object_pose=pose)
