@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
 	<include file="$(find human_moveit_config)/launch/demo.launch"/>
 	<node name="reba_calibrator" pkg="reba_optim" type="reba_calibrator" output="screen" required="True"/>

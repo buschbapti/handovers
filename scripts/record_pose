@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import rospy
 import json
-import sys
 import tf
 import roslib.packages
 
@@ -19,7 +18,7 @@ def main(laterality):
         rospy.sleep(1)
     try:
         transform = tfl.lookupTransform(base, obj, rospy.Time(0))
-    except Exception, e:
+    except Exception:
         raise
 
     rospy.loginfo("Transformation recorded succesfully")
@@ -28,7 +27,7 @@ def main(laterality):
     desired_dict[laterality] = transform
     pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
 
-    with open(pkg_dir+'/config/'+filename+'.json', 'w') as outfile:
+    with open(pkg_dir + '/config/' + filename + '.json', 'w') as outfile:
         json.dump(desired_dict, outfile, sort_keys=True, indent=4)
     return 0
 
