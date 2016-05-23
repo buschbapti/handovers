@@ -7,20 +7,25 @@ import rospkg
 import transformations
 import json
 import tf
+from os.path import join
+from os.path import exists
+from os import makedirs
+import glob
 
 
 class CarryPoseSrv(object):
-    def __init__(self, laterality):
+    def __init__(self, laterality, debug=True):
         self.laterality = laterality
         self.rospack = rospkg.RosPack()
         self.tfl = tf.TransformListener()
         self.tfb = tf.TransformBroadcaster()
         rospy.Service('thr/get_carry_pose', GetCarryPose, self.handle_carry_pose_requests)
+        self.debug = debug
         self.init_poses()
 
     def init_poses(self):
         # get fixed pose from config file
-        pkg_dir = self.rospack.get_path("reba_optim")
+        pkg_dir = self.rospack.get_path('reba_optim')
         with open(pkg_dir + '/config/fixed_pose.yaml', 'r') as datafile:
             data = yaml.load(datafile)
         # convert data to PoseStamped
@@ -43,17 +48,42 @@ class CarryPoseSrv(object):
         self.human_poses['relative']['left'] = [[x, y, z], poses['left'][1]]
 
         # get reba pose from config file
-        with open(pkg_dir + '/config/reba_pose.json') as datafile:
+        with open(pkg_dir + '/tmp/reba_pose.json') as datafile:
             self.human_poses['reba'] = json.load(datafile)
 
         # get desired pose from config file
-        with open(pkg_dir + '/config/desired_pose.json') as datafile:
-            self.human_poses['desired'] = json.load(datafile)
+        with open(pkg_dir + '/tmp/desired_pose.json') as datafile:
+            self.hand_poses = json.load(datafile)
+        self.human_poses['desired'] = self.hand_poses[self.laterality + '_hand']
+
+        # write the file of poses
+        with open(pkg_dir + '/tmp/dict_pose.json', 'w') as outfile:
+            json.dump(self.human_poses, outfile, sort_keys=True, indent=4)
+
+    def write_to_txt(self, pose, method):
+        # create the string of the pose to write in the textfile
+        pose_str = ''
+        for lists in pose:
+            for value in lists:
+                pose_str += str(value) + '\t'
+        pose_str += '\n'
+        # write the string to the file
+        directory = join('/tmp', 'grid_reba')
+        if not exists(directory):
+            makedirs(directory)
+        list_files = glob.glob(directory + '/' + method + '*')
+        index = str(len(list_files))
+        with open(directory + '/' + method + '_' + index + '.txt', 'w') as f:
+            f.write(pose_str)
 
     def handle_carry_pose_requests(self, req):
         if req.method == 'fixed':
             pose = self.fixed_pose
             success = True
+            # record the transformation in a file
+            if self.debug:
+                rospy.set_param('/thr_experiment/current_method', req.method)
+                self.write_to_txt(transformations.pose_to_list(pose), req.method)
         else:
             # open file of poses for shapeo object
             pkg_dir = self.rospack.get_path("thr_scenes")
@@ -71,11 +101,30 @@ class CarryPoseSrv(object):
                 # apply chain rule of transformations
                 pose = transformations.multiply_transform(BaseTHuman, HumanTHand)
                 pose = transformations.multiply_transform(pose, HandTObj)
+                if self.debug:
+                    self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/des_pose', '/base')
+
+                # express transformation in VREP frame
+                ObjectTGripper = self.tfl.lookupTransform('shapeo', 'right_gripper', rospy.Time(0))
+                VrepTBase = self.tfl.lookupTransform('vrep_frame', 'base', rospy.Time(0))
+                GripperTVrep = self.tfl.lookupTransform('right_gripper', 'vrep_tip', rospy.Time(0))
+                BaseTObject = pose
+                # apply chain rule of transformation
+                robot_pose = transformations.multiply_transform(VrepTBase, BaseTObject)
+                robot_pose = transformations.multiply_transform(robot_pose, ObjectTGripper)
+                robot_pose = transformations.multiply_transform(robot_pose, GripperTVrep)
+
+                # record the transformation in a file
+                if self.debug:
+                    rospy.set_param('/thr_experiment/current_method', req.method)
+                    self.write_to_txt(robot_pose, req.method)
+
                 # convert pose to PoseStamped
                 pose = transformations.list_to_pose(pose)
                 pose.header.frame_id = 'base'
                 pose.header.stamp = rospy.get_rostime()
                 success = True
+
             # if the human base is not seen send a failure
             # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             except Exception as e:
