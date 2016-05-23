@@ -5,20 +5,76 @@ import rospkg
 import numpy as np
 import tf
 import json
+import sys
+from os.path import join
 # from visualization_msgs.msg import Marker
 
 if __name__ == "__main__":
     rospy.init_node('reba_calibrator')
-    rospy.sleep(5)
+    rospack = rospkg.RosPack()
+    pkg_dir = rospack.get_path('reba_optim')
+    method = sys.argv[1]
+    output_file = join(pkg_dir, 'tmp', method + '_pose.json')
     rospack = rospkg.RosPack()
     # initialize tf
     tfl = tf.TransformListener()
-    optim = RebaOptimization(cost_factors=[1, 200, 5, 0])
+    rospy.sleep(5)
+
+    output_dict = {}
+    try:
+        laterality = rospy.get_param('/human/laterality')
+    except:
+        laterality = ''
+        while laterality != 'left' and laterality != 'right' and not rospy.is_shutdown():
+            rospy.logwarn('Laterality not defined. What is the subject laterality?')
+            laterality = raw_input()
+    # initialize parameters
+    parameters = {}
+    # parameters depend to the method
+    if method == 'reba':
+        f_reba = 1
+        f_proxemics = 100
+        f_sight = 5
+        # no fixed frames are required
+        fixed_frames = {}
+    elif method == 'naive':
+        f_reba = 0.1
+        f_proxemics = 0
+        f_sight = 0.1
+        # fixed frames are calculated according to granjean recommandations
+        human_lengths = rospy.get_param('/human/lengths')
+        x = 2.0 / 3.0 * (human_lengths['forearm_length'] + human_lengths['upper_arm_length'])
+        if laterality == 'right':
+            y = -0.1
+        else:
+            y = 0.1
+        z = human_lengths['spine_down_length'] + human_lengths['spine_up_length']
+
+        fixed_frames = {}
+        fixed_frames[laterality + '_wrist'] = [[x, y, z], [0, 0, 0, 1]]
+        # only position is important, rotation is irrelevant
+        parameters['fixed_frame_coeffs'] = [1, 0]
+
+    parameters['cost_factors'] = [f_reba, f_proxemics, f_sight]
+    optim = RebaOptimization(params=parameters)
+
+    # by default hip and ankles angles are fixed
+    fixed_joints = {}
+    fixed_joints['right_hip_0'] = 0.
+    fixed_joints['right_hip_1'] = 0.
+    fixed_joints['right_hip_2'] = 0.
+    fixed_joints['right_knee'] = 0.
+    fixed_joints['right_ankle_0'] = 0.
+    fixed_joints['right_ankle_1'] = 0.
+
+    fixed_joints['left_hip_0'] = 0.
+    fixed_joints['left_hip_1'] = 0.
+    fixed_joints['left_hip_2'] = 0.
+    fixed_joints['left_knee'] = 0.
+    fixed_joints['left_ankle_0'] = 0.
+    fixed_joints['left_ankle_1'] = 0.
+
     rospy.loginfo('Calibrating the hand-over location.')
-    # optimize the hand-over location with the specified parameters for both sides
-    tf_hip = []
-    sides = ['right', 'left']
-    # for i in range(2):
     # generate a random pose to start the optimization
     joints = np.zeros(len(optim.model.get_joint_names()))
     # get the pose of the object in world
@@ -51,40 +107,25 @@ if __name__ == "__main__":
     # marker.color.g = 1.0
     # marker.color.b = 0.0
 
-    # by default hip and ankles angles are fixed
-    fixed_joints = {}
-    fixed_joints['right_hip_0'] = 0.
-    fixed_joints['right_hip_1'] = 0.
-    fixed_joints['right_hip_2'] = 0.
-    fixed_joints['right_knee'] = 0.
-    fixed_joints['right_ankle_0'] = 0.
-    fixed_joints['right_ankle_1'] = 0.
-
-    fixed_joints['left_hip_0'] = 0.
-    fixed_joints['left_hip_1'] = 0.
-    fixed_joints['left_hip_2'] = 0.
-    fixed_joints['left_knee'] = 0.
-    fixed_joints['left_ankle_0'] = 0.
-    fixed_joints['left_ankle_1'] = 0.
-
-    output_dict = {}
-    laterality = rospy.get_param('/human/laterality')
-    side_index = sides.index(laterality)
     # optimize to find the pose of the hand
-    res = optim.optimize_posture(joints, 'receive', side=side_index, nb_points=1, fixed_joints=fixed_joints)
+    res, cost_details = optim.optimize_posture(joints, 'receive',
+                                               side=laterality, nb_points=1,
+                                               fixed_joints=fixed_joints,
+                                               fixed_frames=fixed_frames)
     # calculate the forward kinematic
     js = optim.model.get_current_state()
     # set the new joint values
     js.position = res[-1]
-    # add a small twist for the elbow
-    # js.position[js.name.index(side[i]+'_elbow_1')] = (js.position[js.name.index(side[i]+'_elbow_1')] +
-    #                                                   (-1)**(i+1)*1.0472)
     optim.model.send_state(js)
     # get the pose of the hand wrt to the base
     fk = optim.model.forward_kinematic(js)
     output_dict[laterality] = fk[laterality + '_hand']
+    # add detail of cost
+    output_dict['trajectory_costs'] = cost_details
     # write the config file
-    rospack = rospkg.RosPack()
-    pkg_dir = rospack.get_path("reba_optim")
-    with open(pkg_dir + '/config/reba_pose.json', 'w') as outfile:
+    with open(output_file, 'w') as outfile:
         json.dump(output_dict, outfile, sort_keys=True, indent=4)
+
+    # close only when enter pressed
+    rospy.loginfo("Calibration complete. Press enter to close.")
+    raw_input()

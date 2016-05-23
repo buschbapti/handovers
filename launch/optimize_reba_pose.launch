@@ -1,5 +1,12 @@
 <?xml version="1.0"?>
 <launch>
-	<include file="$(find human_moveit_config)/launch/demo.launch"/>
-	<node name="reba_calibrator" pkg="reba_optim" type="reba_calibrator" output="screen" required="True"/>
+	<arg name="method" default="reba"/>
+	
+	<include file="$(find human_moveit_config)/launch/demo.launch">
+		<arg name="launch_rviz" value="true"/>
+	</include>
+	
+	<rosparam command="load" file="$(find human_moveit_config)/tmp/human_length.json" param="human/lengths"/>
+
+	<node name="reba_calibrator" pkg="reba_optim" type="reba_calibrator" output="screen" required="True" args="$(arg method)"/>
 </launch>

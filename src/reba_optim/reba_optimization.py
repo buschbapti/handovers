@@ -3,25 +3,37 @@ from human_moveit_config.human_model import HumanModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
 import math
-import transformations
-from copy import copy
+from copy import deepcopy
 
 
 class RebaOptimization(object):
-    def __init__(self, cost_factors=None):
-        if cost_factors is None:
-            self.cost_factors = [1, 1, 1, 1]
+    def __init__(self, params={}):
+        if 'cost_factors' in params:
+            self.cost_factors = params['cost_factors']
         else:
-            self.cost_factors = cost_factors
+            self.cost_factors = [1, 1, 1, 1]
+        if 'safety_dist' in params:
+            self.safety_dist = params['safety_dist']
+        else:
+            self.safety_dist = [[0.3, 0.6], [-0.1, 0.1], [0.15, 10]]
+        if 'object_pose' in params:
+            self.obj_pose = params['object_pose']
+        else:
+            self.object_pose = []
+        if 'screwing_params' in params:
+            p = params['screwing_params']
+            self.set_screwing_parameters(p[0], p[1])
+        else:
+            self.set_screwing_parameters(0.42, 0.2)
+        if 'fixed_frame_coeffs' in params:
+            self.fixed_frame_coeffs = params['fixed_frame_coeffs']
+        else:
+            self.fixed_frame_coeffs = [1, 2]
         # initialize human model
         self.model = HumanModel()
         # initialize REBA technique
         self.reba = RebaAssess()
         self.previous_joints = []
-        # initialize task dependant informations
-        self.safety_dist = [[0.3, 0.6], [-0.1, 0.1], [0.15, 10]]
-        self.object_pose = []
-        self.set_screwing_parameters(0.42, 0.2)
 
     def set_screwing_parameters(self, object_length, screwdriver_length):
         self.object_length = object_length
@@ -29,62 +41,24 @@ class RebaOptimization(object):
         self.circle_rad = ((self.object_length + self.screwdriver_length) / 2)
         self.circle_rad2 = self.circle_rad**2
 
-        print self.circle_rad
-
-    def get_active_joints_value(self, joints, side=0):
-        joint_values = []
-        for name in self.active_joints[side]:
-            joint_values.append(joints[self.model.joint_names.index(name)])
-        return joint_values
-
-    def calculate_fixed_frame_cost(self, chains, fixed_frames):
-        def caclulate_distance_to_frame(pose, ref_pose, coeffs):
+    def calculate_fixed_frame_cost(self, fk_dict, fixed_frames):
+        def distance_to_frame(pose, ref_pose):
+            d_position = 0
+            d_rotation = 0
             # calculate distance in position
-            d_position = np.linalg.norm(pose[0] - ref_pose[0])
+            if self.fixed_frame_coeffs[0] != 0:
+                d_position = np.linalg.norm(np.array(pose[0]) - np.array(ref_pose[0]))
             # calculate distance in quaternions
-            d_rotation = math.acos(2 * np.inner(pose[1], ref_pose[1])**2 - 1)
+            if self.fixed_frame_coeffs[1] != 0:
+                d_rotation = math.acos(2 * np.inner(pose[1], ref_pose[1])**2 - 1)
             # return the sum of both
-            return coeffs[0] * d_position + coeffs[1] * d_rotation
+            return self.fixed_frame_coeffs[0] * d_position + self.fixed_frame_coeffs[1] * d_rotation
 
-        # def get_frame_pose(frame_name):
-        #     key_found = False
-        #     side = 0
-        #     while not key_found and side < len(self.model.end_effectors):
-        #         # check if the fixed frame is an end-effector
-        #         if frame_name == self.model.end_effectors[side]:
-        #             # pose is the last transform of the chain
-        #             pose = chains[side][-1]
-        #             key_found = True
-        #         elif frame_name in self.active_joints[side]:
-        #             # get the frame from the chain
-        #             pose = chains[side][self.active_joints[side].index(frame_name)]
-        #             key_found = True
-        #     # convert the pose to tuple
-        #     pose = transformations.m4x4_to_list(sympy_to_numpy(pose))
-        #     return pose
-
-        # def get_pose_in_reference_frame(frame_name, frame_reference=None):
-        #     # get frame in hip reference
-        #     fixed = get_frame_pose(frame_name)
-        #     # if reference frame is specified get it
-        #     if frame_reference is not None:
-        #         ref = get_frame_pose(frame_reference)
-        #         # calculate the transformation between them
-        #         link = inverse(ref) * fixed
-        #         return link
-        #     return fixed
-        # cost = 0
-        # if fixed_frames:
-        #     for key in fixed_frames:
-        #         frame_dict = fixed_frames[key]
-        #         coeffs = frame_dict['coeffs']
-        #         des_pose = frame_dict['desired_pose']
-        #         ref_frame = frame_dict['reference_frame']
-        #         # get the pose of the fixed frame
-        #         pose = self.get_pose_in_reference_frame(key, ref_frame)
-        #         # calculate the distance wrt to the fixed frame
-        #         cost += caclulate_distance_to_frame(pose, des_pose, coeffs)
-        # return cost
+        fixed_cost = 0
+        # loop through all the fixed frames
+        for key, value in fixed_frames.iteritems():
+            fixed_cost += distance_to_frame(fk_dict[key], value)
+        return fixed_cost
 
     def calculate_reba_cost(self, joints):
         # use the reba library to calculate the cost
@@ -108,17 +82,6 @@ class RebaOptimization(object):
             index = self.model.get_joint_names().index(key)
             jac_fix[index] = 2 * (joint_array[index] - value)
         return jac_fix
-
-    # def return_value(self, joint_array, key):
-    #     return joint_array[self.model.get_joint_names().index(key)]
-
-    # def assign_leg_values(self, joint_array):
-    #     def assign_per_leg(side):
-    #         knee = self.return_value(joint_array, side+'_knee')
-    #         hip, ankle = self.model.calculate_leg_joints(knee)
-    #         self.assign_value(joint_array, {side+'_hip_1': hip, side+'_ankle_1': hip})
-    #     assign_per_leg('right')
-    #     assign_per_leg('left')
 
     def calculate_sight_cost(self, obj_pose, head_frame, angle_tresh=1.0472):
         # calculate head to object vector
@@ -256,7 +219,7 @@ class RebaOptimization(object):
             jac_task[index] = jac[i]
         return jac_task
 
-    def cost_function(self, q, side=0, use_velocity=False, fixed_joints={}):
+    def cost_function(self, q, side='right', use_velocity=False, fixed_joints={}, fixed_frames={}, cost_details={}):
         C_reba = 0
         C_task = 0
         C_sight = 0
@@ -266,20 +229,17 @@ class RebaOptimization(object):
         # replace the value of fixed joints
         C_fixed_joints = self.fixed_joints_cost(q, fixed_joints)
         # check the necessity to perform the operations
-        if (self.cost_factors[1] != 0 or
-            self.cost_factors[2] != 0 or
-           (self.cost_factors[3] != 0 and self.fixed_frames)):
+        if (self.cost_factors[1] != 0. or self.cost_factors[2] != 0.):
             # get current state
             js = self.model.get_current_state()
             # set the new joint values
             js.position = q
             # calculate the forward kinematic
             fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
+            # calculate cost based on the fixed frames
+            C_fixed_frame = self.calculate_fixed_frame_cost(fk_dict, fixed_frames)
             # extract hand pose
-            if side == 0:
-                hand_pose = fk_dict['right_hand']
-            else:
-                hand_pose = fk_dict['left_hand']
+            hand_pose = fk_dict[side + '_hand']
             # calculate the cost based on safety distance
             if self.cost_factors[1] != 0:
                 C_task = self.calculate_task_cost(hand_pose)
@@ -293,9 +253,6 @@ class RebaOptimization(object):
                 # otherwise it looks at the object
                 else:
                     C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
-            # if self.cost_factors[2] != 0 and fixed_frames:
-            #     # calculate cost based on the fixed frames
-            #     C_fixed_frame = self.calculate_fixed_frame_cost(chains, fixed_frames)
         # calculate REBA score
         if self.cost_factors[0] != 0:
             C_reba = self.calculate_reba_cost(q)
@@ -304,24 +261,27 @@ class RebaOptimization(object):
             C_velocity = self.calculate_velocity_cost(q)
         # return the final score
         cost = (C_fixed_joints +
+                C_fixed_frame +
                 C_velocity +
                 self.cost_factors[0] * C_reba +
                 self.cost_factors[1] * C_task +
                 self.cost_factors[2] * C_sight)
+        # append the detail of each cost
+        cost_details['reba'] = C_reba
+        cost_details['task'] = C_task
+        cost_details['sight'] = C_sight
 
         print cost
         return cost
 
-    def jacobian_cost_function(self, q, side=0, use_velocity=False, fixed_joints={}):
+    def jacobian_cost_function(self, q, side='right', use_velocity=False, fixed_joints={}, fixed_frames={}):
         jac_sight = np.zeros(len(self.model.get_joint_names()))
         jac_task = np.zeros(len(self.model.get_joint_names()))
         jac_reba = np.zeros(len(self.model.get_joint_names()))
         # calculate the jacobian of the fix joints criterion
         jac_fix = self.jacobian_fixed_joints_cost(q, fixed_joints)
         # check the necessity to perform the operations
-        if (self.cost_factors[1] != 0 or
-            self.cost_factors[2] != 0 or
-           (self.cost_factors[3] != 0 and self.fixed_frames)):
+        if (self.cost_factors[1] != 0 or self.cost_factors[2] != 0):
             # get current state
             js = self.model.get_current_state()
             # set the new joint values
@@ -329,14 +289,9 @@ class RebaOptimization(object):
             # calculate the forward kinematic
             fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
             # extract hand pose and human jacobian
-            if side == 0:
-                hand_pose = fk_dict['right_hand']
-                jac_hand = self.model.jacobian('right_arm', js, use_quaternion=True)
-                group_name = 'right_arm'
-            else:
-                hand_pose = fk_dict['left_hand']
-                jac_hand = self.model.jacobian('left_arm', js, use_quaternion=True)
-                group_name = 'left_arm'
+            hand_pose = fk_dict[side + '_hand']
+            jac_hand = self.model.jacobian(side + '_arm', js, use_quaternion=True)
+            group_name = side + '_arm'
             # calculate the cost specific to the task
             if self.cost_factors[1] != 0:
                 jac_task = self.jacobian_task_cost(hand_pose, jac_hand, group_name)
@@ -355,23 +310,25 @@ class RebaOptimization(object):
                     self.cost_factors[2] * jac_sight)
         return jac_cost
 
-    def optimize_posture(self, joints, task, side=0, nb_points=1, fixed_joints={}):
+    def optimize_posture(self, joints, task, side='right', nb_points=1, fixed_joints={}, fixed_frames={}):
         self.task = task
         # initialize the trajectory
         joint_traj = []
         # get the joints limits for the optimization
         joint_limits = self.model.get_joint_limits()
         # get the initial_joint
-        init_joints = copy(joints)
+        init_joints = deepcopy(joints)
         joint_traj.append(init_joints)
         self.previous_joints = init_joints
         # check if the velocity is constrained
         use_velocity = nb_points > 1
+        cost_details = []
         for i in range(nb_points):
             # call optimization from scipy
+            costs = {}
             res = minimize(self.cost_function, init_joints,
                            # jac=self.jacobian_cost_function,
-                           args=(side, use_velocity, fixed_joints, ),
+                           args=(side, use_velocity, fixed_joints, fixed_frames, costs),
                            method='L-BFGS-B',
                            bounds=joint_limits)
             # options={'maxfun': 100})
@@ -381,4 +338,5 @@ class RebaOptimization(object):
 
             print res
             print "point " + str(i) + " calculated"
-        return joint_traj
+            cost_details.append(deepcopy(costs))
+        return joint_traj, cost_details
