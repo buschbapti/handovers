@@ -223,39 +223,33 @@ class RebaOptimization(object):
         C_reba = 0
         C_task = 0
         C_sight = 0
-        # C_fixed_frame = 0
+        C_fixed_frame = 0
         C_fixed_joints = 0
         C_velocity = 0
         # replace the value of fixed joints
         C_fixed_joints = self.fixed_joints_cost(q, fixed_joints)
-        # check the necessity to perform the operations
-        if (self.cost_factors[1] != 0. or self.cost_factors[2] != 0.):
-            # get current state
-            js = self.model.get_current_state()
-            # set the new joint values
-            js.position = q
-            # calculate the forward kinematic
-            fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
-            # calculate cost based on the fixed frames
-            C_fixed_frame = self.calculate_fixed_frame_cost(fk_dict, fixed_frames)
-            # extract hand pose
-            hand_pose = fk_dict[side + '_hand']
-            # calculate the cost based on safety distance
-            if self.cost_factors[1] != 0:
-                C_task = self.calculate_task_cost(hand_pose)
-            # calculate the cost of having the object in sight
-            if self.cost_factors[2] != 0:
-                # extract head pose
-                head_pose = fk_dict['head']
-                # if the task is received the model look at its hand
-                if self.task == 'receive':
-                    C_sight = self.calculate_sight_cost(hand_pose, head_pose)
-                # otherwise it looks at the object
-                else:
-                    C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
+        # get current state
+        js = self.model.get_current_state()
+        # set the new joint values
+        js.position = q
+        # calculate the forward kinematic
+        fk_dict = self.model.forward_kinematic(js, group_name='upper_body', links='all')
+        # calculate cost based on the fixed frames
+        C_fixed_frame = self.calculate_fixed_frame_cost(fk_dict, fixed_frames)
+        # extract hand pose
+        hand_pose = fk_dict[side + '_hand']
+        # calculate the cost based on safety distance
+        C_task = self.calculate_task_cost(hand_pose)
+        # calculate the cost of having the object in sight
+        head_pose = fk_dict['head']
+        # if the task is received the model look at its hand
+        if self.task == 'receive':
+            C_sight = self.calculate_sight_cost(hand_pose, head_pose)
+        # otherwise it looks at the object
+        else:
+            C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
         # calculate REBA score
-        if self.cost_factors[0] != 0:
-            C_reba = self.calculate_reba_cost(q)
+        C_reba = self.calculate_reba_cost(q)
         # calculate the score based on the velocity
         if use_velocity:
             C_velocity = self.calculate_velocity_cost(q)
@@ -287,7 +281,7 @@ class RebaOptimization(object):
             # set the new joint values
             js.position = q
             # calculate the forward kinematic
-            fk_dict = self.model.forward_kinematic(js, group_name='upper_body')
+            fk_dict = self.model.forward_kinematic(js, group_name='upper_body', links='all')
             # extract hand pose and human jacobian
             hand_pose = fk_dict[side + '_hand']
             jac_hand = self.model.jacobian(side + '_arm', js, use_quaternion=True)
