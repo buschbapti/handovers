@@ -187,7 +187,7 @@ classdef Dmp < handle
             if ~isfield(param, 'timeFactorForSteadyState');
                 % whichever comes first will stop the loop
                 obj.timeFactorForSteadyState = 2.5; % maximum time allowed
-                minError = 0.05; % minimum error to stop the integration
+                minError = 0.01; % minimum error to stop the integration
             else
                 minError = -999;
             end

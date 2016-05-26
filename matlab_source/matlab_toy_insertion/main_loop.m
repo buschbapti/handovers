@@ -65,7 +65,7 @@ function [DMP, T, q] = main_loop(robot, DMP, h, nUpdates, nRollOut, param, flagR
                      param.costWeight.obstacle param.costWeight.startGoal...
                      param.costWeight.viaPointMid  param.costWeight.odometry...
                      param.costWeight.objectXdist]);        
-            %toc
+            toc
         end
                 
         if ~flagReplayOnly% add the IK cost here

@@ -5,7 +5,7 @@ function robot =  initialize_vrep_baxter( startElbowConfig )
     % Initialize Baxter
     robot = VrepBaxter(vrepObj);
     robot.simStart;
-    robot.getDummyHandlesFromVREP({'Dummy_target', 'Dummy_tip', 'Dummy_tipFK', 'handoverPosition', 'Dummy_viaPoint_table'});
+    robot.getDummyHandlesFromVREP({'Dummy_target', 'Dummy_tip', 'Dummy_tipFK', 'handoverPosition', 'Dummy_viaPoint_table', 'Dummy_tip_humanA_L', 'Dummy_tip_humanA_R'});
 
     robot.requestStreaming; % this is important!
 
@@ -37,4 +37,10 @@ function robot =  initialize_vrep_baxter( startElbowConfig )
     robot.backToRestPosture(); 
     robot.setJointAngles(robot.qRestPosture, 1);
 
+    robot.opt.floorHeight = -1.220; % meters
+    robot.opt.tableHeight = -0.475; % meters
+    
+
+    
+    
 end

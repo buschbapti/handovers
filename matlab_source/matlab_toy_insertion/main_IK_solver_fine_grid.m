@@ -10,7 +10,7 @@ end
 
 clear; clc; close all; dbstop if error;
 type_grid = 'grid_relative';
-type_grid = 'grid_reba';
+%type_grid = 'grid_reba';
 
 robot = initialize_vrep_baxter('elbow_down');
 load(['./data/' type_grid '.mat']);
@@ -87,7 +87,7 @@ for j=jStart:nTotal
         close all;
         solGrid{ctr} = optim_wrap(robot, T_, []);
         ctr = ctr+1;
-        save(['./data/solGrid2.mat'], 'solGrid');
+        save(['./data/fine_' type_grid '.mat'], 'solGrid');
     end    
 end
 
