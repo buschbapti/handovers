@@ -1,19 +1,17 @@
-if 1
-    %initialize_dropbox_path(1,0,1);
-    addpath('../func_misc_self_contained');
-    addpath('../func_kinematics');
-    addpath('./func_robot_vrep');
-    addpath('./func_robot_vrep/func_vrep_bridge');
-    addpath('../matlab_main/func_generalize_traj');
-    addpath('../matlab_main/audio');
-end
+%initialize_dropbox_path(1,0,1);
+addpath('../func_misc_self_contained');
+addpath('../func_kinematics');
+addpath('./func_robot_vrep');
+addpath('./func_robot_vrep/func_vrep_bridge');
+addpath('../matlab_plate_handover/func_generalize_traj');
+addpath('../audio');
 
 clear; clc; close all; dbstop if error;
 
 % If this flag is 1 no ROS node is required and poses are generated
 % randomly. If the flag is zero, it will wait for a real pose in 
 % posesFromROS.txt and for the flag  flagROSfinished.txt
-paramGeneral.run_without_ROS_trigger = 1;
+paramGeneral.run_without_ROS_trigger = 0;
 
 % Which type of grid you want to load
 % 'reba' or 'relative'
