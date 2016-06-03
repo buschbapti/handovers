@@ -304,7 +304,7 @@ class RebaOptimization(object):
                     self.cost_factors[2] * jac_sight)
         return jac_cost
 
-    def optimize_posture(self, joints, task, side='right', nb_points=1, fixed_joints={}, fixed_frames={}):
+    def optimize_posture(self, joints, task, side='right', nb_points=1, fixed_joints={}, fixed_frames={}, maxiter=1000):
         self.task = task
         # initialize the trajectory
         joint_traj = []
@@ -324,7 +324,8 @@ class RebaOptimization(object):
                            # jac=self.jacobian_cost_function,
                            args=(side, use_velocity, fixed_joints, fixed_frames, costs),
                            method='L-BFGS-B',
-                           bounds=joint_limits)
+                           bounds=joint_limits,
+                           options={'maxfun': maxiter})
             # options={'maxfun': 100})
             init_joints = res.x
             self.previous_joints = init_joints
