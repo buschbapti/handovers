@@ -14,7 +14,7 @@ import glob
 
 
 class CarryPoseSrv(object):
-    def __init__(self, laterality, debug=True):
+    def __init__(self, laterality, debug=False):
         self.laterality = laterality
         self.rospack = rospkg.RosPack()
         self.tfl = tf.TransformListener()
@@ -29,9 +29,7 @@ class CarryPoseSrv(object):
         with open(pkg_dir + '/config/fixed_pose.yaml', 'r') as datafile:
             data = yaml.load(datafile)
         # convert data to PoseStamped
-        self.fixed_pose = transformations.list_to_pose(data)
-        self.fixed_pose.header.frame_id = 'base'
-        self.fixed_pose.header.stamp = rospy.get_rostime()
+        self.fixed_pose = data
 
         self.human_poses = {}
         # calculate relative pose from torso and arm length
@@ -73,17 +71,18 @@ class CarryPoseSrv(object):
             makedirs(directory)
         list_files = glob.glob(directory + '/' + method + '*')
         index = str(len(list_files))
+        rospy.set_param('/thr_experiment/current_index', index)
         with open(directory + '/' + method + '_' + index + '.txt', 'w') as f:
             f.write(pose_str)
 
     def handle_carry_pose_requests(self, req):
         if req.method == 'fixed':
-            pose = self.fixed_pose
+            BaseTObject = self.fixed_pose
             success = True
             # record the transformation in a file
             if self.debug:
                 rospy.set_param('/thr_experiment/current_method', req.method)
-                self.write_to_txt(transformations.pose_to_list(pose), req.method)
+                self.write_to_txt(BaseTObject, req.method)
         else:
             # open file of poses for shapeo object
             pkg_dir = self.rospack.get_path("thr_scenes")
@@ -103,35 +102,43 @@ class CarryPoseSrv(object):
                 pose = transformations.multiply_transform(pose, HandTObj)
                 if self.debug:
                     self.tfb.sendTransform(pose[0], pose[1], rospy.Time.now(), '/des_pose', '/base')
-
-                # express transformation in VREP frame
-                ObjectTGripper = self.tfl.lookupTransform('shapeo', 'right_gripper', rospy.Time(0))
-                VrepTBase = self.tfl.lookupTransform('vrep_frame', 'base', rospy.Time(0))
-                GripperTVrep = self.tfl.lookupTransform('right_gripper', 'vrep_tip', rospy.Time(0))
                 BaseTObject = pose
-                # apply chain rule of transformation
-                robot_pose = transformations.multiply_transform(VrepTBase, BaseTObject)
-                robot_pose = transformations.multiply_transform(robot_pose, ObjectTGripper)
-                robot_pose = transformations.multiply_transform(robot_pose, GripperTVrep)
-
-                # record the transformation in a file
-                if self.debug:
-                    rospy.set_param('/thr_experiment/current_method', req.method)
-                    self.write_to_txt(robot_pose, req.method)
-
-                # convert pose to PoseStamped
-                pose = transformations.list_to_pose(pose)
-                pose.header.frame_id = 'base'
-                pose.header.stamp = rospy.get_rostime()
-                success = True
-
-            # if the human base is not seen send a failure
+                # if the human base is not seen send a failure
             # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             except Exception as e:
                 print e
                 success = False
                 pose = PoseStamped()
-        return GetCarryPoseResponse(success=success, object_pose=pose)
+                return GetCarryPoseResponse(success=success, object_pose=pose)
+
+        if rospy.get_param("/vrep/use"):
+            # express transformation in VREP frame
+            ObjectTGripper = self.tfl.lookupTransform('shapeo', 'right_gripper', rospy.Time(0))
+            VrepTBase = self.tfl.lookupTransform('vrep_frame', 'base', rospy.Time(0))
+            GripperTVrep = self.tfl.lookupTransform('right_gripper', 'vrep_tip', rospy.Time(0))
+
+            # apply chain rule of transformation
+            robot_pose = transformations.multiply_transform(VrepTBase, BaseTObject)
+            robot_pose = transformations.multiply_transform(robot_pose, ObjectTGripper)
+            robot_pose = transformations.multiply_transform(robot_pose, GripperTVrep)
+            base_name = 'vrep_frame'
+        else:
+            robot_pose = BaseTObject
+            base_name = 'base'
+
+        # record the transformation in a file
+        if self.debug:
+            rospy.set_param('/thr_experiment/current_method', req.method)
+            self.write_to_txt(robot_pose, req.method)
+
+        # convert pose to PoseStamped
+        pose_stamped = transformations.list_to_pose(robot_pose)
+
+        pose_stamped.header.frame_id = base_name
+        pose_stamped.header.stamp = rospy.get_rostime()
+        success = True
+
+        return GetCarryPoseResponse(success=success, object_pose=pose_stamped)
 
     def run(self):
         rospy.spin()
