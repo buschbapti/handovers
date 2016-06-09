@@ -15,7 +15,7 @@ class RebaOptimization(object):
         if 'safety_dist' in params:
             self.safety_dist = params['safety_dist']
         else:
-            self.safety_dist = [[0.3, 0.6], [-0.1, 0.1], [0.15, 10]]
+            self.safety_dist = [[0.1, 0.3], [-0.1, 0.1], [0.15, 10]]
         if 'object_pose' in params:
             self.obj_pose = params['object_pose']
         else:
@@ -304,7 +304,7 @@ class RebaOptimization(object):
                     self.cost_factors[2] * jac_sight)
         return jac_cost
 
-    def optimize_posture(self, joints, task, side='right', nb_points=1, fixed_joints={}, fixed_frames={}, maxiter=1000):
+    def optimize_posture(self, joints, task, side='right', nb_points=1, fixed_joints={}, fixed_frames={}, maxiter=100):
         self.task = task
         # initialize the trajectory
         joint_traj = []
