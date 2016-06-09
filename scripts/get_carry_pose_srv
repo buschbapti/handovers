@@ -49,10 +49,10 @@ class CarryPoseSrv(object):
         with open(pkg_dir + '/tmp/reba_pose.json') as datafile:
             self.human_poses['reba'] = json.load(datafile)
 
-        # get desired pose from config file
-        with open(pkg_dir + '/tmp/desired_pose.json') as datafile:
-            self.hand_poses = json.load(datafile)
-        self.human_poses['desired'] = self.hand_poses[self.laterality + '_hand']
+        # # get desired pose from config file
+        # with open(pkg_dir + '/tmp/desired_pose.json') as datafile:
+        #     self.hand_poses = json.load(datafile)
+        # self.human_poses['desired'] = self.hand_poses[self.laterality + '_hand']
 
         # write the file of poses
         with open(pkg_dir + '/tmp/dict_pose.json', 'w') as outfile:
@@ -94,7 +94,7 @@ class CarryPoseSrv(object):
                 print e
                 success = False
                 pose = PoseStamped()
-                return GetCarryPoseResponse(success=success, object_pose=pose)
+                return GetCarryPoseResponse(success=success, fixed=fixed, hand_pose=pose)
 
         # record the transformation in a file
         if self.debug:
