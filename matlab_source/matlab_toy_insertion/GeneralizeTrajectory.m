@@ -57,6 +57,7 @@ classdef GeneralizeTrajectory < handle
                 for t =1:numel(obj.qTraj1(:,1))
                     robot.setJointAngles(obj.qTraj1(t,:),1);
                 end
+                pause
             else
                 robot.setJointAngles(obj.qTraj1(end,:),1);
                 %pause(2)
@@ -68,10 +69,16 @@ classdef GeneralizeTrajectory < handle
             robot.setCartesian(Ttarget, 'Dummy_target');
             robot.setCartesian(Ttarget, 'handoverPosition');
 
-            % check which joint guess gives better results
+            % check which joint configuration gives better results
+            % ================================================
+            % 
+            % using the initial joint configuration of the rest posture
             robot.setJointAngles(  initGuess.q(1,:)  ); pause(1);
             TtipA    = robot.readEntityCoordinate('Dummy_tip');
             qTargetA = robot.getJointAngles();
+            
+            % using the final joint configuration at the end of the initial
+            % guess
             robot.setJointAngles(  initGuess.q(end,:)  );  pause(1);
             TtipB = robot.readEntityCoordinate('Dummy_tip');
             qTargetB = robot.getJointAngles();                
@@ -104,19 +111,22 @@ classdef GeneralizeTrajectory < handle
             d = wDist*[dxyzA dxyzB dxyzNN]./sum([dxyzA dxyzB dxyzNN]) +...
                 (1-wDist)*[dquatA dquatB dquatNN ]./sum([dquatA dquatB dquatNN]);
 
-            [~, idx] = min(d);        
-            if idx==3
-                keyboard 
+            [val, idx] = min(d);          
+            
+            if 0 %idx==3
+                keyboard
             end
             robot.backToRestPosture;
             % pick the type with lower error
             if idx == 1 
                 qTarget = qTargetA;
                 fprintf('Generalize DMP. Init Guess type 1.\n');
+                fprintf('Error xyz: %g rot:%g SE3 %g.\n', dxyzA, dquatA, val);                
             end
             if idx == 2
                 qTarget = qTargetB;
                 fprintf('Generalize DMP. Init Guess type 2.\n');
+                fprintf('Error xyz: %g rot:%g SE3 %g.\n', dxyzB, dquatB, val);  
             end            
             if idx==1 || idx==2                      
                 paramDMP.Dgain = 300;
@@ -134,6 +144,7 @@ classdef GeneralizeTrajectory < handle
             if idx==3 % if NN no need to generalize DMP
                 obj.qTraj1 = initGuess.q;
                 fprintf('Using NN solution.\n');
+                fprintf('Error xyz: %g rot:%g SE3 %g.\n', dxyzNN, dquatNN, val);  
             end
 
             

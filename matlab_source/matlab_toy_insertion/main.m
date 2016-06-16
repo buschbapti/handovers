@@ -32,8 +32,7 @@ paramGeneral.nTraj      = 200;    % number of steps in each trajectory
 paramGeneral.speedUpWithoutFKanimation =  1 ;
 
 paramGeneral.debugMode = 0;
-paramGeneral.checkFinalSolution = 0; % this will stop the simulation and run 
-                                     % the FK on the smoothed final solution
+paramGeneral.checkFinalSolution = 'not in use'; 
 
 % Forces the position of the end-effector to be at least "minDistFromRobot"
 % away from the origin. Empirically I think anything under 0.5 will have a
@@ -68,7 +67,7 @@ end
 
 mctr=1;
 
-while mctr <  20  % main loop keeps running non-stop
+while mctr <  inf  % main loop keeps running non-stop
     
     tic
     clear posesFromROS; % this is important when doing iterations!!!
@@ -99,9 +98,9 @@ while mctr <  20  % main loop keeps running non-stop
     end
     posesFromROS(2,1) = tr.forceHumanAwayFromRobot(posesFromROS(2,1));
         
-    if 1
+    if 0
         save('tempPose.mat', 'posesFromROS');
-    else
+    elseif 0
         load('tempPose.mat');
     end
     
@@ -118,9 +117,7 @@ while mctr <  20  % main loop keeps running non-stop
     
     % skip if solution does not right in vrep
     tr.write_trajectory_file(storePath);
-    fprintf('\n*******************************\n', toc);
     fprintf('Trajectory generated %g sec.\n', toc);
-    fprintf('*********************************\n\n\n', toc);
 
     mctr = mctr+1;
     
