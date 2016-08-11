@@ -1,11 +1,13 @@
 <?xml version="1.0"?>
 <launch>
 	<arg name="use_kinect" default="False"/>
+
+	<rosparam command="load" file="$(find human_moveit_config)/tmp/human_length.json" param="human/lengths"/>
     
     <include file="$(find human_moveit_config)/launch/human_tracker.launch">
     	<arg name="use_kinect" value="$(arg use_kinect)"/>
     </include>
-	
+
 	<node name="vrep_frames_publisher" pkg="vrep_ik_bridge" type="vrep_frames_publisher" output="screen" required="True"/>
 	
 	<node name="get_carry_pose_srv" pkg="reba_optim" type="get_carry_pose_srv" output="screen" required="True"/>
