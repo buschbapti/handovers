@@ -4,7 +4,7 @@
 	<arg name="arm_constrained" default="False"/>
 	<arg name="task" default="receive"/>
 	<arg name="object_dof" default="0"/>
-	<arg name="number_of_points" default="0"/>
+	<arg name="number_of_points" default="1"/>
 	<arg name="savefile" default=""/>
 	<arg name="launch_rviz" default="true"/>
 
