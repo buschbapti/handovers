@@ -271,12 +271,19 @@ class RebaOptimization(object):
             joint_limits += self.model.get_joint_limits(self.joint_names)
         # add eventual parameters for the optimization
         opt_params, param_limits = self.initialize_task(nb_points)
+
+        # account for maxiter
+        if maxiter != -1:
+            options = {'maxfun': maxiter}
+        else:
+            options = None
+
         # call optimization from scipy
         res = minimize(self.cost_function, init_joints + opt_params,
                        args=(side, fixed_joints, fixed_frames, costs, nb_points),
                        method='L-BFGS-B',
                        bounds=joint_limits + param_limits,
-                       options={'maxfun': maxiter})
+                       options=options)
         # options={'maxfun': 100})
         nb_joints = (len(res.x) - self.nb_params) / nb_points
         for i in range(nb_points):

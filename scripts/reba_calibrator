@@ -18,6 +18,7 @@ if __name__ == "__main__":
     task = sys.argv[3]
     nb_params = int(sys.argv[4])
     nb_points = int(sys.argv[5])
+    maxiter = -1
 
     if constrained:
         extension = '_pose_constrained.json'
@@ -32,7 +33,7 @@ if __name__ == "__main__":
 
     # initialize tf
     tfl = tf.TransformListener()
-    rospy.sleep(5)
+    rospy.sleep(1)
 
     output_dict = {}
     try:
@@ -117,7 +118,8 @@ if __name__ == "__main__":
 
     rospy.loginfo('Calibrating the hand-over location.')
     # generate a random pose to start the optimization
-    rand_state = optim.model.get_random_state()
+    # rand_state = optim.model.get_random_state()
+    rand_state = optim.model.get_initial_state()
 
     # optimize to find the pose of the hand
     res, cost_details = optim.optimize_posture(rand_state, task,
@@ -125,7 +127,7 @@ if __name__ == "__main__":
                                                fixed_joints=fixed_joints,
                                                fixed_frames=fixed_frames,
                                                group_names='upper_body',
-                                               # maxiter=maxiter,
+                                               maxiter=maxiter,
                                                nb_params=nb_params)
     # save the joints config
     output_dict['state'] = []
