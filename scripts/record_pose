@@ -3,35 +3,53 @@ import rospy
 import json
 import tf
 import roslib.packages
+from os.path import join
 
 
-def main(laterality):
-    obj = '/human/tracker/' + laterality + '_hand'
-    base = '/human/tracker/base'
-    filename = 'desired_pose'
-
-    tfl = tf.TransformListener()
-    rospy.sleep(1)
-    # get the transformation
-    while not tfl.canTransform(base, obj, rospy.Time(0)) and not rospy.is_shutdown():
-        rospy.logerr("Transformation not visible please move a bit")
+class PoseRecorder(object):
+    def __init__(self):
+        self.tfl = tf.TransformListener()
         rospy.sleep(1)
-    try:
-        transform = tfl.lookupTransform(base, obj, rospy.Time(0))
-    except Exception:
-        raise
+        self.desired_dict = {}
+        pkg_dir = roslib.packages.get_pkg_dir('reba_optim')
+        self.filename = join(pkg_dir, 'tmp', 'desired_pose.json')
+        self.laterality = rospy.get_param('/human/laterality')
 
-    rospy.loginfo("Transformation recorded succesfully")
+    def record_frame(self, obj, base, key):
+        # get the transformation
+        while not self.tfl.canTransform(base, obj, rospy.Time(0)) and not rospy.is_shutdown():
+            rospy.logerr("Transformation not visible please move a bit")
+            raw_input()
+        try:
+            transform = self.tfl.lookupTransform(base, obj, rospy.Time(0))
+        except Exception:
+            raise
 
-    desired_dict = {}
-    desired_dict[laterality] = transform
-    pkg_dir = roslib.packages.get_pkg_dir("reba_optim")
+        rospy.loginfo("Transformation recorded succesfully")
+        # erase previous transform
+        self.desired_dict[key] = transform
 
-    with open(pkg_dir + '/config/' + filename + '.json', 'w') as outfile:
-        json.dump(desired_dict, outfile, sort_keys=True, indent=4)
-    return 0
+    def run(self):
+        shape_list = ['star', 'slice', 'trapezium', 'hexagon', 'ellipse']
+        # ask the user for desired pose of object
+        rospy.loginfo('Record object pose when ready')
+        raw_input()
+        self.record_frame('/human/tracker/' + self.laterality + '_hand',
+                          '/human/tracker/base',
+                          self.laterality + '_hand')
+        for s in shape_list:
+            rospy.loginfo('Record pose of ' + s + ' when ready')
+            raw_input()
+            self.record_frame('/human/tracker/' + self.laterality + '_hand',
+                              '/shapeo',
+                              s)
+
+        # write the file
+        with open(self.filename, 'w') as outfile:
+            json.dump(self.desired_dict, outfile, sort_keys=True, indent=4)
+        return 0
 
 if __name__ == '__main__':
     rospy.init_node('record_pose')
-    laterality = rospy.get_param('/human/laterality')
-    main(laterality)
+    rec = PoseRecorder()
+    rec.run()
