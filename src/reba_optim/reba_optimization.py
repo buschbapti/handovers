@@ -133,7 +133,7 @@ class RebaOptimization(object):
         # transform the current point
         point = multiply_transform(self.object_pose, self.welding_points[current_point])
         d_position = np.linalg.norm(np.array(point[0]) - np.array(fk_hand[0]))
-        cost = d_position + self.calculate_safety_cost(fk_hand)
+        cost = d_position
         return cost
 
     def calculate_task_cost(self, fk_hand, current_point=0):
@@ -215,7 +215,7 @@ class RebaOptimization(object):
             cost_details['task'][i] = C_task
             cost_details['sight'][i] = C_sight
 
-        print cost
+        # print cost
         return cost
 
     def generate_welding_points(self, welding_radius=0.2, nb_points=10):
