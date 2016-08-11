@@ -49,6 +49,9 @@ class CarryPoseSrv(object):
         with open(pkg_dir + '/tmp/reba_pose.json') as datafile:
             self.human_poses['reba'] = json.load(datafile)
 
+        # account for x difference
+        self.human_poses['reba'][rospy.get_param('/human/laterality')][0][0] -= 0.1
+
         # # get desired pose from config file
         # with open(pkg_dir + '/tmp/desired_pose.json') as datafile:
         #     self.hand_poses = json.load(datafile)
