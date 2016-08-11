@@ -1,12 +1,20 @@
 <?xml version="1.0"?>
 <launch>
 	<arg name="method" default="reba"/>
+	<arg name="arm_constrained" default="False"/>
+	<arg name="task" default="receive"/>
+	<arg name="object_dof" default="0"/>
+	<arg name="number_of_points" default="0"/>
+	<arg name="savefile" default=""/>
+	<arg name="launch_rviz" default="true"/>
+
+	<node pkg="tf" type="static_transform_publisher" name="human_broadcaster" args="0. 0. 0. 0. 0. 0. 1. /base /human/base 100" />
 	
 	<include file="$(find human_moveit_config)/launch/demo.launch">
-		<arg name="launch_rviz" value="true"/>
+		<arg name="launch_rviz" value="$(arg launch_rviz)"/>
 	</include>
 	
 	<rosparam command="load" file="$(find human_moveit_config)/tmp/human_length.json" param="human/lengths"/>
 
-	<node name="reba_calibrator" pkg="reba_optim" type="reba_calibrator" output="screen" required="True" args="$(arg method)"/>
+	<node name="reba_calibrator" pkg="reba_optim" type="reba_calibrator" output="screen" required="True" args="$(arg method) $(arg arm_constrained) $(arg task) $(arg object_dof) $(arg number_of_points) $(arg savefile)"/>
 </launch>

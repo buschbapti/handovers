@@ -3,10 +3,11 @@ from human_moveit_config.human_model import HumanModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
 import math
-from copy import deepcopy
 from numpy import linspace
 from numpy import sqrt
 from transformations import multiply_transform
+from numpy import zeros
+from numpy.linalg import norm
 
 
 class RebaOptimization(object):
@@ -20,7 +21,7 @@ class RebaOptimization(object):
         else:
             self.safety_dist = [[0.35, 0.45], [-0.1, 0.1], [0.15, 10]]
         if 'object_pose' in params:
-            self.obj_pose = params['object_pose']
+            self.object_pose = params['object_pose']
         else:
             self.object_pose = []
         if 'screwing_params' in params:
@@ -37,6 +38,8 @@ class RebaOptimization(object):
         # initialize REBA technique
         self.reba = RebaAssess()
         self.previous_joints = []
+        self.nb_params = 0
+        self.task = ''
 
     def set_screwing_parameters(self, object_length, screwdriver_length):
         self.object_length = object_length
@@ -91,7 +94,8 @@ class RebaOptimization(object):
         z_obj = [2 * (qo[0] * qo[2] + qo[1] * qo[3]),
                  2 * (qo[1] * qo[2] - qo[0] * qo[3]),
                  1 - 2 * qo[0] * qo[0] - 2 * qo[1] * qo[1]]
-        theta = math.acos(np.dot(-np.array(Hx), z_obj))
+        value = min(1, max(np.dot(-np.array(Hx), z_obj), -1))
+        theta = math.acos(value)
         if abs(theta) > angle_tresh:
             cost += 1 * abs(theta - angle_tresh)
         return cost
@@ -129,9 +133,7 @@ class RebaOptimization(object):
         # transform the current point
         point = multiply_transform(self.object_pose, self.welding_points[current_point])
         d_position = np.linalg.norm(np.array(point[0]) - np.array(fk_hand[0]))
-        # calculate distance in quaternions
-        d_rotation = math.acos(2 * np.inner(point[1], fk_hand[1])**2 - 1)
-        cost = d_position + 3 * d_rotation + self.calculate_safety_cost(fk_hand)
+        cost = d_position + self.calculate_safety_cost(fk_hand)
         return cost
 
     def calculate_task_cost(self, fk_hand, current_point=0):
@@ -149,25 +151,30 @@ class RebaOptimization(object):
     def use_parameters(self, opt_params):
         if self.task == 'welding':
             # transform the object pose with the parameters
-            if len(opt_params) == 3:
-                self.object_pose = [opt_params, [0, 0, 0, 1]]
+            if self.nb_params == 3:
+                self.object_pose = [opt_params.tolist(), self.object_pose[1]]
+            elif self.nb_params == 4:
+                self.object_pose = [self.object_pose[0], opt_params.tolist()]
+                return abs(norm(opt_params) - 1)
+            elif self.nb_params == 7:
+                self.object_pose = [opt_params[:3].tolist(), opt_params[3:].tolist()]
+                return abs(norm(opt_params[3:]) - 1)
+        return 0
 
     def cost_function(self, q, side='right', fixed_joints={}, fixed_frames={},
-                      cost_details={}, nb_params=0, nb_points=1):
+                      cost_details={}, nb_points=1):
         C_reba = 0
         C_task = 0
         C_sight = 0
         C_fixed_frame = 0
         C_fixed_joints = 0
+        C_parameters = 0
         cost = 0
-        cost_details['reba'] = 0
-        cost_details['task'] = 0
-        cost_details['sight'] = 0
         # extract the parameters
-        opt_params = q[len(q) - nb_params:]
-        nb_joints = (len(q) - nb_params) / nb_points
+        opt_params = q[len(q) - self.nb_params:]
+        nb_joints = (len(q) - self.nb_params) / nb_points
         # use the parameters of the optimzation
-        self.use_parameters(opt_params)
+        C_parameters = self.use_parameters(opt_params)
         # loop through all the points of the trajectory
         for i in range(nb_points):
             joint_values = q[i * nb_joints:(i + 1) * nb_joints]
@@ -199,13 +206,14 @@ class RebaOptimization(object):
             # return the final score
             cost += (C_fixed_joints +
                      C_fixed_frame +
+                     C_parameters +
                      self.cost_factors[0] * C_reba +
                      self.cost_factors[1] * C_task +
                      self.cost_factors[2] * C_sight)
             # append the detail of each cost
-            cost_details['reba'] += C_reba
-            cost_details['task'] += C_task
-            cost_details['sight'] += C_sight
+            cost_details['reba'][i] = C_reba
+            cost_details['task'][i] = C_task
+            cost_details['sight'][i] = C_sight
 
         print cost
         return cost
@@ -219,9 +227,23 @@ class RebaOptimization(object):
             self.welding_points.append([[x[i], y[i], 0], [0, 0, 0, 1]])
             self.welding_points.append([[x[i], -y[i], 0], [0, 0, 0, 1]])
 
+    def initialize_task(self, nb_points):
+        if self.task == 'welding':
+            self.generate_welding_points(nb_points=nb_points)
+            init_pose = zeros(self.nb_params).tolist()
+            # create a quaternion for rotation
+            if self.nb_params == 4 or self.nb_params == 7:
+                init_pose[-1] = 1
+            limits = []
+            for i in range(self.nb_params):
+                limits.append([-1., 1.])
+            return init_pose, limits
+        return [], []
+
     def optimize_posture(self, init_state, task, side='right', group_names='whole_body',
-                         fixed_joints={}, fixed_frames={}, maxiter=100, nb_points=1):
+                         fixed_joints={}, fixed_frames={}, maxiter=100, nb_points=1, nb_params=0):
         self.task = task
+        self.nb_params = nb_params
         # initialize the trajectory
         joint_traj = []
         # get the number of joints according to the required group
@@ -234,40 +256,43 @@ class RebaOptimization(object):
         self.joint_names = list(joint_names_set)
         # get only joints to optimize
         init_joints = []
-        for name in self.joint_names:
-            init_joints.append(init_state.position[init_state.name.index(name)])
-        # get the initial_joint
-        joint_traj.append(init_joints)
-        self.previous_joints = init_joints
-        # get the joints limits for the optimization
-        joint_limits = self.model.get_joint_limits(self.joint_names)
-        cost_details = []
-        # add eventual parameters for the optimization
-        opt_params = []
-        # call optimization from scipy
+        joint_limits = []
         costs = {}
+        costs['reba'] = []
+        costs['task'] = []
+        costs['sight'] = []
+        for i in range(nb_points):
+            costs['reba'].append(0)
+            costs['task'].append(0)
+            costs['sight'].append(0)
+            for name in self.joint_names:
+                init_joints.append(init_state.position[init_state.name.index(name)])
+            # get the joints limits for the optimization
+            joint_limits += self.model.get_joint_limits(self.joint_names)
+        # add eventual parameters for the optimization
+        opt_params, param_limits = self.initialize_task(nb_points)
+        # call optimization from scipy
         res = minimize(self.cost_function, init_joints + opt_params,
-                       args=(side, fixed_joints, fixed_frames, costs, len(opt_params), nb_points),
+                       args=(side, fixed_joints, fixed_frames, costs, nb_points),
                        method='L-BFGS-B',
-                       bounds=joint_limits,
+                       bounds=joint_limits + param_limits,
                        options={'maxfun': maxiter})
         # options={'maxfun': 100})
-        opt_joints = res.x
-        # convert it to a joint state
-        js = self.model.get_current_state()
-        js.position = list(js.position)
-        js.name = list(js.name)
-        # replace joint values with optimized ones
-        for i in range(len(self.joint_names)):
-            name = self.joint_names[i]
-            js.position[js.name.index(name)] = opt_joints[i]
-        # replace fixed values
-        for key, value in fixed_joints.iteritems():
-            js.position[js.name.index(key)] = value
+        nb_joints = (len(res.x) - self.nb_params) / nb_points
+        for i in range(nb_points):
+            opt_joints = res.x[i * nb_joints:(i + 1) * nb_joints]
+            # convert it to a joint state
+            js = self.model.get_current_state()
+            js.position = list(js.position)
+            js.name = list(js.name)
+            # replace joint values with optimized ones
+            for j in range(len(self.joint_names)):
+                name = self.joint_names[j]
+                js.position[js.name.index(name)] = opt_joints[j]
+            # replace fixed values
+            for key, value in fixed_joints.iteritems():
+                js.position[js.name.index(key)] = value
+            joint_traj.append(js)
 
         print res
-        print "point " + str(i) + " calculated"
-
-        joint_traj.append(js)
-        cost_details.append(deepcopy(costs))
-        return joint_traj, cost_details
+        return joint_traj, costs

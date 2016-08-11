@@ -2,7 +2,6 @@
 import rospy
 from reba_optim.reba_optimization import RebaOptimization
 import rospkg
-import numpy as np
 import tf
 import json
 import sys
@@ -16,12 +15,21 @@ if __name__ == "__main__":
     pkg_dir = rospack.get_path('reba_optim')
     method = sys.argv[1]
     constrained = (sys.argv[2].lower() == 'true')
+    task = sys.argv[3]
+    nb_params = int(sys.argv[4])
+    nb_points = int(sys.argv[5])
+
     if constrained:
         extension = '_pose_constrained.json'
     else:
         extension = '_pose.json'
-    output_file = join(pkg_dir, 'tmp', method + extension)
-    rospack = rospkg.RosPack()
+
+    # get name of file to save
+    if sys.argv[6]:
+        output_file = sys.argv[6]
+    else:
+        output_file = join(pkg_dir, 'tmp', method + '_' + task + extension)
+
     # initialize tf
     tfl = tf.TransformListener()
     rospy.sleep(5)
@@ -54,10 +62,16 @@ if __name__ == "__main__":
     # initialize parameters
     parameters = {}
     fixed_frames = {}
+
+    # get initial pose of the object
+    try:
+        parameters['object_pose'] = rospy.get_param('/object/pose')
+    except:
+        parameters['object_pose'] = [[0.5, 0.0, 0.2], [0, 0, 0, 1]]
     # parameters depend to the method
     if method == 'reba':
         f_reba = 1
-        f_proxemics = 100
+        f_proxemics = 10
         f_sight = 5
 
     elif method == 'naive':
@@ -106,24 +120,35 @@ if __name__ == "__main__":
     rand_state = optim.model.get_random_state()
 
     # optimize to find the pose of the hand
-    res, cost_details = optim.optimize_posture(rand_state, 'receive',
-                                               side=laterality, nb_points=1,
+    res, cost_details = optim.optimize_posture(rand_state, task,
+                                               side=laterality, nb_points=nb_points,
                                                fixed_joints=fixed_joints,
                                                fixed_frames=fixed_frames,
-                                               group_names=[laterality + '_arm', 'head'])
+                                               group_names='upper_body',
+                                               # maxiter=maxiter,
+                                               nb_params=nb_params)
     # save the joints config
-    output_state = res[-1]
-    output_dict['state'] = statetodict(output_state)
-    optim.model.send_state(output_state)
-    # get the pose of the hand wrt to the base
-    fk = optim.model.forward_kinematic(output_state)
-    output_dict[laterality] = fk[laterality + '_hand']
+    output_dict['state'] = []
+    output_dict[laterality] = []
+    for i in range(nb_points):
+        output_state = res[i]
+        output_dict['state'].append(statetodict(output_state))
+        optim.model.send_state(output_state)
+
+        rospy.sleep(1)
+
+        # get the pose of the hand wrt to the base
+        fk = optim.model.forward_kinematic(output_state)
+        output_dict[laterality].append(fk[laterality + '_hand'])
     # add detail of cost
     output_dict['trajectory_costs'] = cost_details
+    output_dict['object_pose'] = optim.object_pose
+    if task == 'welding':
+        output_dict['welding_points'] = optim.welding_points
     # write the config file
     with open(output_file, 'w') as outfile:
         json.dump(output_dict, outfile, sort_keys=True, indent=4)
 
-    # close only when enter pressed
-    rospy.loginfo("Calibration complete. Press enter to close.")
-    raw_input()
+    # # close only when enter pressed
+    # rospy.loginfo("Calibration complete. Press enter to close.")
+    # raw_input()
