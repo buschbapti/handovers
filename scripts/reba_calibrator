@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # parameters depend to the method
     if method == 'reba':
         f_reba = 1
-        f_proxemics = 100
+        f_proxemics = 50
         f_sight = 5
 
     elif method == 'naive':

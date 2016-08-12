@@ -6,6 +6,7 @@ from .tools.interpolation import *
 from keras.models import model_from_json
 import rospkg
 from os.path import join
+from moveit_msgs.msg import RobotState
 
 
 class RebaAssess(object):
@@ -331,8 +332,13 @@ class RebaAssess(object):
         return sum_reba
 
     def assess_from_neural_model(self, state):
+        if isinstance(state, RobotState):
+            state = state.joint_state
         X = []
         for j in self.assess_joints:
-            X.append(state.joint_state.position[state.joint_state.name.index(j)])
+            if j in state.name:
+                X.append(state.position[state.name.index(j)])
+            else:
+                X.append(0.0)
         score = self.neural_model.predict([np.array([X])])
         return score[0][0]

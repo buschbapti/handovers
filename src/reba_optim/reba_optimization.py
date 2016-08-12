@@ -2,6 +2,8 @@ import numpy as np
 from human_moveit_config.human_model import HumanModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
+# from scipy.optimize import basinhopping
 import math
 from numpy import linspace
 from numpy import sqrt
@@ -66,9 +68,9 @@ class RebaOptimization(object):
             fixed_cost += distance_to_frame(fk_dict[key], value)
         return fixed_cost
 
-    def calculate_reba_cost(self, joints):
+    def calculate_reba_cost(self, state):
         # use the reba library to calculate the cost
-        cost = self.reba.assess_posture(joints, self.joint_names)
+        cost = self.reba.assess_from_neural_model(state)
         return cost
 
     def fixed_joints_cost(self, joint_array, dict_values):
@@ -148,17 +150,17 @@ class RebaOptimization(object):
         else:
             return 0
 
-    def use_parameters(self, opt_params):
+    def use_parameters(self, opt_params, coeff=5):
         if self.task == 'welding':
             # transform the object pose with the parameters
             if self.nb_params == 3:
                 self.object_pose = [opt_params.tolist(), self.object_pose[1]]
             elif self.nb_params == 4:
                 self.object_pose = [self.object_pose[0], opt_params.tolist()]
-                return abs(norm(opt_params) - 1)
+                return coeff * abs(norm(opt_params) - 1)
             elif self.nb_params == 7:
                 self.object_pose = [opt_params[:3].tolist(), opt_params[3:].tolist()]
-                return abs(norm(opt_params[3:]) - 1)
+                return coeff * abs(norm(opt_params[3:]) - 1)
         return 0
 
     def cost_function(self, q, side='right', fixed_joints={}, fixed_frames={},
@@ -202,7 +204,7 @@ class RebaOptimization(object):
             else:
                 C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
             # calculate REBA score
-            C_reba = self.calculate_reba_cost(joint_values)
+            C_reba = self.calculate_reba_cost(js)
             # return the final score
             cost += (C_fixed_joints +
                      C_fixed_frame +
@@ -215,7 +217,7 @@ class RebaOptimization(object):
             cost_details['task'][i] = C_task
             cost_details['sight'][i] = C_sight
 
-        # print cost
+        print cost
         return cost
 
     def generate_welding_points(self, welding_radius=0.2, nb_points=10):
@@ -277,14 +279,20 @@ class RebaOptimization(object):
             options = {'maxfun': maxiter}
         else:
             options = None
+            maxiter = 1000
 
         # call optimization from scipy
-        res = minimize(self.cost_function, init_joints + opt_params,
-                       args=(side, fixed_joints, fixed_frames, costs, nb_points),
-                       method='L-BFGS-B',
-                       bounds=joint_limits + param_limits,
-                       options=options)
-        # options={'maxfun': 100})
+        # res = minimize(self.cost_function, init_joints + opt_params,
+        #                args=(side, fixed_joints, fixed_frames, costs, nb_points),
+        #                method='L-BFGS-B',
+        #                bounds=joint_limits + param_limits,
+        #                options=options)
+
+        res = differential_evolution(self.cost_function,
+                                     args=(side, fixed_joints, fixed_frames, costs, nb_points),
+                                     bounds=joint_limits + param_limits,
+                                     maxiter=maxiter)
+
         nb_joints = (len(res.x) - self.nb_params) / nb_points
         for i in range(nb_points):
             opt_joints = res.x[i * nb_joints:(i + 1) * nb_joints]
