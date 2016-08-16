@@ -341,4 +341,4 @@ class RebaAssess(object):
             else:
                 X.append(0.0)
         score = self.neural_model.predict([np.array([X])])
-        return score[0][0]
+        return float(score[0][0])
