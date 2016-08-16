@@ -64,6 +64,9 @@ if __name__ == "__main__":
     parameters = {}
     fixed_frames = {}
 
+    # set the optimizer between gradient or evolution
+    parameters['optimizer'] = sys.argv[7]
+
     # get initial pose of the object
     try:
         parameters['object_pose'] = rospy.get_param('/object/pose')
