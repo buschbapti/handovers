@@ -14,6 +14,10 @@ from numpy.linalg import norm
 
 class RebaOptimization(object):
     def __init__(self, params={}):
+        if 'optimizer' in params:
+            self.optimizer = params['optimizer']
+        else:
+            self.optimizer = 'gradient'
         if 'cost_factors' in params:
             self.cost_factors = params['cost_factors']
         else:
@@ -282,16 +286,17 @@ class RebaOptimization(object):
             maxiter = 1000
 
         # call optimization from scipy
-        # res = minimize(self.cost_function, init_joints + opt_params,
-        #                args=(side, fixed_joints, fixed_frames, costs, nb_points),
-        #                method='L-BFGS-B',
-        #                bounds=joint_limits + param_limits,
-        #                options=options)
-
-        res = differential_evolution(self.cost_function,
-                                     args=(side, fixed_joints, fixed_frames, costs, nb_points),
-                                     bounds=joint_limits + param_limits,
-                                     maxiter=maxiter)
+        if self.optimizer == 'gradient':
+            res = minimize(self.cost_function, init_joints + opt_params,
+                           args=(side, fixed_joints, fixed_frames, costs, nb_points),
+                           method='L-BFGS-B',
+                           bounds=joint_limits + param_limits,
+                           options=options)
+        elif self.optimizer == 'evolution':
+            res = differential_evolution(self.cost_function,
+                                         args=(side, fixed_joints, fixed_frames, costs, nb_points),
+                                         bounds=joint_limits + param_limits,
+                                         maxiter=maxiter)
 
         nb_joints = (len(res.x) - self.nb_params) / nb_points
         for i in range(nb_points):
