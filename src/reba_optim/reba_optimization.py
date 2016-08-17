@@ -72,9 +72,13 @@ class RebaOptimization(object):
             fixed_cost += distance_to_frame(fk_dict[key], value)
         return fixed_cost
 
-    def calculate_reba_cost(self, state):
-        # use the reba library to calculate the cost
-        cost = self.reba.assess_from_neural_model(state)
+    # def calculate_reba_cost(self, state):
+    #     # use the reba library to calculate the cost
+    #     cost = self.reba.assess_from_neural_model(state)
+    #     return cost
+
+    def calculate_reba_cost(self, joints):
+        cost = self.reba.assess_posture(joints, self.joint_names)
         return cost
 
     def fixed_joints_cost(self, joint_array, dict_values):
@@ -208,7 +212,8 @@ class RebaOptimization(object):
             else:
                 C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
             # calculate REBA score
-            C_reba = self.calculate_reba_cost(js)
+            # C_reba = self.calculate_reba_cost(js)
+            C_reba = self.calculate_reba_cost(joint_values)
             # return the final score
             cost += (C_fixed_joints +
                      C_fixed_frame +
