@@ -18,6 +18,9 @@ if __name__ == "__main__":
     task = sys.argv[3]
     nb_params = int(sys.argv[4])
     nb_points = int(sys.argv[5])
+    savefile = sys.argv[6]
+    optimizer = sys.argv[7]
+    wait = (sys.argv[8].lower() == 'true')
     maxiter = -1
 
     if constrained:
@@ -26,10 +29,10 @@ if __name__ == "__main__":
         extension = '_pose.json'
 
     # get name of file to save
-    if sys.argv[6]:
-        output_file = sys.argv[6]
-    else:
+    if savefile == 'default':
         output_file = join(pkg_dir, 'tmp', method + '_' + task + extension)
+    else:
+        output_file = sys.argv[6]
 
     # initialize tf
     tfl = tf.TransformListener()
@@ -65,7 +68,7 @@ if __name__ == "__main__":
     fixed_frames = {}
 
     # set the optimizer between gradient or evolution
-    parameters['optimizer'] = sys.argv[7]
+    parameters['optimizer'] = optimizer
 
     # get initial pose of the object
     try:
@@ -121,8 +124,8 @@ if __name__ == "__main__":
 
     rospy.loginfo('Calibrating the hand-over location.')
     # generate a random pose to start the optimization
-    # rand_state = optim.model.get_random_state()
-    rand_state = optim.model.get_initial_state()
+    rand_state = optim.model.get_random_state()
+    # rand_state = optim.model.get_initial_state()
 
     # optimize to find the pose of the hand
     res, cost_details = optim.optimize_posture(rand_state, task,
@@ -155,5 +158,6 @@ if __name__ == "__main__":
         json.dump(output_dict, outfile, sort_keys=True, indent=4)
 
     # # close only when enter pressed
-    # rospy.loginfo("Calibration complete. Press enter to close.")
-    # raw_input()
+    if wait:
+        rospy.loginfo("Calibration complete. Press enter to close.")
+        raw_input()
