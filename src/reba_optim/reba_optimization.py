@@ -39,6 +39,10 @@ class RebaOptimization(object):
             self.fixed_frame_coeffs = params['fixed_frame_coeffs']
         else:
             self.fixed_frame_coeffs = [1, 2]
+        if 'assessment_method' in params:
+            self.assessment_method = params['assessment_method']
+        else:
+            self.assessment_method = 'polynomial'
         # initialize human model
         self.model = HumanModel()
         # initialize REBA technique
@@ -77,8 +81,8 @@ class RebaOptimization(object):
     #     cost = self.reba.assess_from_neural_model(state)
     #     return cost
 
-    def calculate_reba_cost(self, joints):
-        cost = self.reba.assess_posture(joints, self.joint_names)
+    def calculate_reba_cost(self, joint_state):
+        cost = self.reba.assess_posture(joint_state, self.assessment_method)
         return cost
 
     def fixed_joints_cost(self, joint_array, dict_values):
@@ -212,8 +216,7 @@ class RebaOptimization(object):
             else:
                 C_sight = self.calculate_sight_cost(self.object_pose, head_pose)
             # calculate REBA score
-            # C_reba = self.calculate_reba_cost(js)
-            C_reba = self.calculate_reba_cost(joint_values)
+            C_reba = self.calculate_reba_cost(js)
             # return the final score
             cost += (C_fixed_joints +
                      C_fixed_frame +

@@ -9,6 +9,7 @@
 	<arg name="savefile" default="default"/>
 	<arg name="launch_rviz" default="true"/>
 	<arg name="wait" default="true"/>
+	<arg name="assessment_method" default="polynomial"/> <!--polynomial or neural_network -->
 
 	<node pkg="tf" type="static_transform_publisher" name="human_broadcaster" args="0. 0. 0. 0. 0. 0. 1. /base /human/base 100" />
 	
@@ -18,5 +19,5 @@
 	
 	<rosparam command="load" file="$(find human_moveit_config)/tmp/human_length.json" param="human/lengths"/>
 
-	<node name="task_optimizer" pkg="reba_optim" type="task_optimization" output="screen" required="True" args="$(arg method) $(arg arm_constrained) $(arg task) $(arg object_dof) $(arg number_of_points) $(arg savefile) $(arg optimizer) $(arg wait)"/>
+	<node name="task_optimizer" pkg="reba_optim" type="task_optimization" output="screen" required="True" args="$(arg method) $(arg arm_constrained) $(arg task) $(arg object_dof) $(arg number_of_points) $(arg savefile) $(arg optimizer) $(arg wait) $(arg assessment_method)"/>
 </launch>

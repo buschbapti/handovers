@@ -21,6 +21,7 @@ if __name__ == "__main__":
     savefile = sys.argv[6]
     optimizer = sys.argv[7]
     wait = (sys.argv[8].lower() == 'true')
+    assessment_method = sys.argv[9].lower()
     maxiter = -1
 
     if constrained:
@@ -69,6 +70,7 @@ if __name__ == "__main__":
 
     # set the optimizer between gradient or evolution
     parameters['optimizer'] = optimizer
+    parameters['assessment_method'] = assessment_method
 
     # get initial pose of the object
     try:

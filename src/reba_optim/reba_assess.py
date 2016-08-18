@@ -319,9 +319,11 @@ class RebaAssess(object):
                 if names[i] in save_dict.keys():
                     save_dict[names[i]].append(value)
 
-    def assess_posture(self, joints, names):
+    def _assess_from_polynomes(self, joint_state):
         # calculate the reba based on sum of polynoms
         sum_reba = 0
+        names = joint_state.name
+        joints = joint_state.position
         for i in range(len(names)):
             if names[i] in self.reba_dict:
                 reba_group = self.reba_dict[names[i]]
@@ -331,14 +333,23 @@ class RebaAssess(object):
                 sum_reba += value
         return sum_reba
 
-    def assess_from_neural_model(self, state):
-        if isinstance(state, RobotState):
-            state = state.joint_state
+    def _assess_from_neural_model(self, joint_state):
         X = []
         for j in self.assess_joints:
-            if j in state.name:
-                X.append(state.position[state.name.index(j)])
+            if j in joint_state.name:
+                X.append(joint_state.position[joint_state.name.index(j)])
             else:
                 X.append(0.0)
         score = self.neural_model.predict([np.array([X])])
         return float(score[0][0])
+
+    def assess_posture(self, state, method):
+        if isinstance(state, RobotState):
+            state = state.joint_state
+        if method == 'polynomial':
+            return self._assess_from_polynomes(state)
+        elif method == 'neural_network':
+            return self._assess_from_neural_model(state)
+        else:
+            print 'Unknown assessment method'
+            return 0
