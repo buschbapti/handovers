@@ -14,8 +14,7 @@ import glob
 
 
 class CarryPoseSrv(object):
-    def __init__(self, laterality, debug=True):
-        self.laterality = laterality
+    def __init__(self, debug=False):
         self.rospack = rospkg.RosPack()
         self.tfl = tf.TransformListener()
         self.tfb = tf.TransformBroadcaster()
@@ -46,16 +45,11 @@ class CarryPoseSrv(object):
         self.human_poses['relative']['left'] = [[x, y, z], poses['left'][1]]
 
         # get reba pose from config file
-        with open(pkg_dir + '/tmp/reba_pose.json') as datafile:
+        with open(pkg_dir + '/config/reba_pose.json') as datafile:
             self.human_poses['reba'] = json.load(datafile)
 
         # account for x difference
-        self.human_poses['reba'][rospy.get_param('/human/laterality')][0][0] -= 0.1
-
-        # # get desired pose from config file
-        # with open(pkg_dir + '/tmp/desired_pose.json') as datafile:
-        #     self.hand_poses = json.load(datafile)
-        # self.human_poses['desired'] = self.hand_poses[self.laterality + '_hand']
+        # self.human_poses['reba'][rospy.get_param('/human/laterality')][0][0] -= 0.1
 
         # write the file of poses
         with open(pkg_dir + '/tmp/dict_pose.json', 'w') as outfile:
@@ -87,7 +81,8 @@ class CarryPoseSrv(object):
                 self.tfl.waitForTransform('base', '/human/tracker/base', rospy.Time(), rospy.Duration(0.5))
                 BaseTHuman = self.tfl.lookupTransform('base', '/human/tracker/base', rospy.Time(0))
                 # get the humand hand wrt to human base
-                HumanTHand = self.human_poses[req.method][self.laterality]
+                laterality = rospy.get_param('/human/laterality')
+                HumanTHand = self.human_poses[req.method][laterality]
                 # apply chain rule of transformations
                 pose = transformations.multiply_transform(BaseTHuman, HumanTHand)
                 if self.debug:
@@ -96,8 +91,9 @@ class CarryPoseSrv(object):
             except Exception as e:
                 print e
                 success = False
+                fixed = False
                 pose = PoseStamped()
-                return GetCarryPoseResponse(success=success, fixed=fixed, hand_pose=pose)
+                return GetCarryPoseResponse(success=success, fixed_pose=fixed, hand_pose=pose)
 
         # record the transformation in a file
         if self.debug:
@@ -129,6 +125,6 @@ if __name__ == '__main__':
             laterality = raw_input()
         if not rospy.is_shutdown():
             rospy.set_param('/human/laterality', laterality)
-    c = CarryPoseSrv(laterality)
+    c = CarryPoseSrv()
     print "Ready to receive carry request"
     c.run()
