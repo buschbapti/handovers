@@ -8,8 +8,8 @@ import math
 from numpy import linspace
 from numpy import sqrt
 from transformations import multiply_transform
-from numpy import zeros
 from numpy.linalg import norm
+from numpy.random import uniform
 
 
 class RebaOptimization(object):
@@ -244,13 +244,23 @@ class RebaOptimization(object):
     def initialize_task(self, nb_points):
         if self.task == 'welding':
             self.generate_welding_points(nb_points=nb_points)
-            init_pose = zeros(self.nb_params).tolist()
+            x = uniform(0.25, 1)
+            y = uniform(-1., 1.)
+            z = uniform(-0.5, 1.)
+            q = uniform(-1., 1., 4)
+            q /= norm(q)
+            q = list(q)
             # create a quaternion for rotation
-            if self.nb_params == 4 or self.nb_params == 7:
-                init_pose[-1] = 1
+            init_pose = []
             limits = []
-            for i in range(self.nb_params):
+            if self.nb_params != 4:
+                init_pose = [x, y, z]
+                limits.append([0., 1.5])
                 limits.append([-1., 1.])
+                limits.append([-0.5, 1.])
+            if self.nb_params != 3:
+                init_pose += q
+                limits += 4 * [[-1., 1.]]
             return init_pose, limits
         return [], []
 
