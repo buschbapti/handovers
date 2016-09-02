@@ -7,10 +7,6 @@ import rospkg
 import transformations
 import json
 import tf
-from os.path import join
-from os.path import exists
-from os import makedirs
-import glob
 
 
 class CarryPoseSrv(object):
@@ -55,23 +51,6 @@ class CarryPoseSrv(object):
         with open(pkg_dir + '/tmp/dict_pose.json', 'w') as outfile:
             json.dump(self.human_poses, outfile, sort_keys=True, indent=4)
 
-    def write_to_txt(self, pose, method):
-        # create the string of the pose to write in the textfile
-        pose_str = ''
-        for lists in pose:
-            for value in lists:
-                pose_str += str(value) + '\t'
-        pose_str += '\n'
-        # write the string to the file
-        directory = join('/tmp', 'grid_reba')
-        if not exists(directory):
-            makedirs(directory)
-        list_files = glob.glob(directory + '/' + method + '*')
-        index = str(len(list_files))
-        rospy.set_param('/thr_experiment/current_index', index)
-        with open(directory + '/' + method + '_' + index + '.txt', 'w') as f:
-            f.write(pose_str)
-
     def handle_carry_pose_requests(self, req):
         if req.method == 'fixed':
             pose = self.fixed_pose
@@ -94,11 +73,6 @@ class CarryPoseSrv(object):
                 fixed = False
                 pose = PoseStamped()
                 return GetCarryPoseResponse(success=success, fixed_pose=fixed, hand_pose=pose)
-
-        # record the transformation in a file
-        if self.debug:
-            rospy.set_param('/thr_experiment/current_method', req.method)
-            self.write_to_txt(pose, req.method)
 
         # convert pose to PoseStamped
         pose_stamped = transformations.list_to_pose(pose)
