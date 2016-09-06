@@ -183,7 +183,7 @@ class RebaOptimization(object):
         C_fixed_frame = 0
         C_fixed_joints = 0
         C_parameters = 0
-        cost = 0
+        cost = []
         # extract the parameters
         opt_params = q[len(q) - self.nb_params:]
         nb_joints = (len(q) - self.nb_params) / nb_points
@@ -218,19 +218,19 @@ class RebaOptimization(object):
             # calculate REBA score
             C_reba = self.calculate_reba_cost(js)
             # return the final score
-            cost += (C_fixed_joints +
-                     C_fixed_frame +
-                     C_parameters +
-                     self.cost_factors[0] * C_reba +
-                     self.cost_factors[1] * C_task +
-                     self.cost_factors[2] * C_sight)
+            cost.append(C_fixed_joints +
+                        C_fixed_frame +
+                        C_parameters +
+                        self.cost_factors[0] * C_reba +
+                        self.cost_factors[1] * C_task +
+                        self.cost_factors[2] * C_sight)
             # append the detail of each cost
             cost_details['reba'][i] = C_reba
             cost_details['task'][i] = C_task
             cost_details['sight'][i] = C_sight
 
         print cost
-        return cost
+        return max(cost)
 
     def generate_welding_points(self, welding_radius=0.2, nb_points=10):
         assert nb_points % 2 == 0
