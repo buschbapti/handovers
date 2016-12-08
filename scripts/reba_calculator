@@ -7,72 +7,109 @@ import plotly.tools as tls
 import rospy
 import numpy as np
 from threading import Lock
+from collections import deque
 
 
 class RebaCalculator(object):
     def __init__(self):
-        self.reba = RebaAssess(save_score=True)
-        self.reba_values = []
-        self.reba_buffer = []
+        self.reba = RebaAssess()
+        self.reba_buffer = {}
         self.buffer_size = 5
         self.max_time_reset = rospy.Duration(5)
         self.last_time_message = rospy.get_rostime()
-        self.init_plotly_streaming()
         self.reset = True
         self.timelock = Lock()
+        self.groups = [['spine', 3], ['neck', 3], ['left_shoulder', 2], ['right_shoulder', 2],
+                       ['left_elbow', 1], ['right_elbow', 1], ['left_wrist', 3], ['right_wrist', 3]]
+        for key in self.groups:
+            self.reba_buffer[key[0]] = deque(maxlen=self.buffer_size)
+        self.reba_buffer['total'] = deque(maxlen=self.buffer_size)
+        self.stream_index = 0
+        self.init_plotly_streaming()
 
     def init_plotly_streaming(self):
         stream_ids = tls.get_credentials_file()['stream_ids']
+        # create sublplot figure
+        fig = tls.make_subplots(rows=3, cols=4, specs=[[{}, {}, {}, {}], [{}, {}, {}, {}], [{'colspan': 4}, None, None, None]],
+                                subplot_titles=('Spine', 'Neck', 'Left Shoulder', 'Right Shoulder', 'Left Elbow',
+                                                'Right Elbow', 'Left Wrist', 'Right Wrist', 'Total'))
+        score_range = [[0, 7], [0, 5], [0, 8], [0, 8], [0, 3],
+                       [0, 3], [0, 5], [0, 5], [0, 10]]
+        # add the layout
+        fig['layout'].update(showlegend=False, title='REBA Score')
+        for i in range(len(score_range)):
+            fig['layout']['yaxis' + str(i + 1)].update(title='score', range=score_range[i])
+
         # Get stream id from stream id list
-        self.stream_id = stream_ids[0]
-        # Make instance of stream id object
+        for i, g in enumerate(self.groups):
+            stream = Stream(
+                token=stream_ids[i],  # (!) link stream id to 'token' key
+                maxpoints=10     # (!) keep a max of 80 pts on screen
+            )
+            # Initialize trace of streaming plot by embedding the unique stream_id
+            trace = Scatter(
+                x=[],
+                y=[],
+                mode='lines+markers',
+                stream=stream         # (!) embed stream id, 1 per trace
+            )
+            # add the trace to the figure
+            r = i / 4 + 1
+            c = i % 4 + 1
+            fig.append_trace(trace, r, c)
+        # add total trace
         stream = Stream(
-            token=self.stream_id,  # (!) link stream id to 'token' key
+            token=stream_ids[len(self.groups) + 1],  # (!) link stream id to 'token' key
             maxpoints=10     # (!) keep a max of 80 pts on screen
         )
         # Initialize trace of streaming plot by embedding the unique stream_id
-        trace1 = Scatter(
+        trace = Scatter(
             x=[],
             y=[],
             mode='lines+markers',
             stream=stream         # (!) embed stream id, 1 per trace
         )
-        data = Data([trace1])
-        # Add title to layout object
-        layout = Layout(title='Reba Score',
-                        yaxis=dict(
-                            range=[0, 10]
-                            )
-                        )
-        # Make a figure object
-        fig = Figure(data=data, layout=layout)
+        # add the trace to the figure
+        fig.append_trace(trace, 3, 1)
+
         # (@) Send fig to Plotly, initialize streaming plot, open new tab
-        unique_url = py.plot(fig, filename='reba_score')
+        py.plot(fig, filename='reba_score')
+
         # open plotly stream
-        self.plot_stream = py.Stream(self.stream_id)
-        self.plot_stream.open()
+        self.streams = {}
+        for i, g in enumerate(self.groups):
+            self.streams[g[0]] = py.Stream(stream_ids[i])
+            self.streams[g[0]].open()
+        # add total
+        self.streams['total'] = py.Stream(stream_ids[len(self.groups) + 1])
+        self.streams['total'].open()
 
     def reset_stream(self):
-        self.reba_values = []
-        self.reba_buffer = []
-        self.plot_stream.write(dict(x=[], y=[]))
+        self.stream_index = 0
+        for key, s in self.streams.iteritems():
+            self.reba_buffer[key] = deque(maxlen=self.buffer_size)
+            s.write(dict(x=[], y=[]))
         self.reset = True
+        self.last_time_message = rospy.get_rostime()
 
     def handle_joint_state_msgs(self, msg):
+        self.stream_index += 1
         with self.timelock:
             self.reset = False
             self.last_time_message = rospy.get_rostime()
         # calculate the reba score
-        reba_score = self.reba.assess_posture(msg.position, msg.name)
+        reba_score = self.reba.assess_posture(msg, 'neural_network')
+        reba_dict = self.reba.assess_group(msg, self.groups)
         # add the value to the buffer
-        self.reba_buffer.append(reba_score)
-        if len(self.reba_buffer) == self.buffer_size:
-            reba_avg = np.mean(self.reba_buffer)
-            self.reba_values.append(reba_avg)
+        self.reba_buffer['total'].append(reba_score)
+        avg = np.mean(self.reba_buffer['total'])
+        # stream the data to Plotly
+        self.streams['total'].write(dict(x=self.stream_index, y=avg))
+        for key, value in reba_dict.iteritems():
+            self.reba_buffer[key].append(value)
+            avg = np.mean(self.reba_buffer[key])
             # stream the data to Plotly
-            self.plot_stream.write(dict(x=len(self.reba_values), y=reba_avg))
-            # clean the buffer
-            self.reba_buffer = []
+            self.streams[key].write(dict(x=self.stream_index, y=avg))
 
     def run(self):
         rate = rospy.Rate(10)
@@ -81,16 +118,21 @@ class RebaCalculator(object):
             # check with latest receive message to reset if necessary
             current_time = rospy.get_rostime()
             with self.timelock:
-                if current_time - self.last_time_message > self.max_time_reset and not self.reset:
+                if not self.reset and current_time - self.last_time_message > self.max_time_reset:
                     # save previous log
                     self.reba.save_log()
+                    self.reset_stream()
+                elif current_time - self.last_time_message > rospy.Duration(55):
+                    # send a hearthbeat to avoid closing connection
                     self.reset_stream()
             # sleep
             rate.sleep()
         # save the log
         self.reba.save_log()
         # close plotly stream
-        self.plot_stream.close()
+        for key, s in self.streams.iteritems():
+            s.close()
+
 
 if __name__ == '__main__':
     rospy.init_node('reba_calculator')
