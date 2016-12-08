@@ -57,8 +57,8 @@ class CarryPoseSrv(object):
             fixed = True
         else:
             try:
-                self.tfl.waitForTransform('base', '/human/tracker/base', rospy.Time(), rospy.Duration(0.5))
-                BaseTHuman = self.tfl.lookupTransform('base', '/human/tracker/base', rospy.Time(0))
+                self.tfl.waitForTransform('base', 'tracker/human/base', rospy.Time(), rospy.Duration(0.5))
+                BaseTHuman = self.tfl.lookupTransform('base', 'tracker/human/base', rospy.Time(0))
                 # get the humand hand wrt to human base
                 laterality = rospy.get_param('/human/laterality')
                 HumanTHand = self.human_poses[req.method][laterality]
