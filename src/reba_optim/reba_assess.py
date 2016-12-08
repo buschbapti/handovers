@@ -2,8 +2,7 @@ import numpy as np
 from collections import deque
 import json
 import os.path
-from .tools.interpolation import *
-from keras.models import model_from_json
+from keras.models import load_model
 import rospkg
 from os.path import join
 from moveit_msgs.msg import RobotState
@@ -28,19 +27,16 @@ class RebaAssess(object):
         rospack = rospkg.RosPack()
         pkg_dir = rospack.get_path('reba_optim')
         config_dir = join(pkg_dir, 'config')
-        modelName = "bb-abc"
-        modelVersion = 1
 
-        self.neural_model = model_from_json(open(join(config_dir, "model-" +
-                                            modelName + '-' + str(modelVersion) +
-                                            '.json')).read())
-        self.neural_model.load_weights(join(config_dir, "model-" +
-                                            modelName + '-' +
-                                            str(modelVersion) + '.h5'))
-        self.assess_joints = ['neck_0', 'neck_1', 'neck_2', 'spine_0', 'spine_1', 'spine_2', 'right_knee',
-                              'left_knee', 'right_shoulder_0', 'right_shoulder_1', 'left_shoulder_0',
+        modelName = "reba3"
+        modelVersion = 2
+        modelName = "model-" + modelName + '-' + str(modelVersion)
+        self.neural_model = load_model(join(config_dir, modelName + '-full.h5'))
+
+        self.assess_joints = ['neck_0', 'neck_1', 'neck_2', 'spine_0', 'spine_1', 'spine_2', 'right_knee_0',
+                              'left_knee_0', 'right_shoulder_0', 'right_shoulder_1', 'left_shoulder_0',
                               'left_shoulder_1', 'right_elbow_0', 'left_elbow_0', 'right_wrist_0',
-                              'right_wrist_1', 'left_wrist_0', 'left_wrist_1']
+                              'right_wrist_1', 'right_wrist_2', 'left_wrist_0', 'left_wrist_1', 'left_wrist_2']
 
     def reba_table_init(self):
         # group A table
@@ -86,10 +82,10 @@ class RebaAssess(object):
 
     def reba_logger_init(self, deque_size):
         # create list of keys
-        self.keys = ['neck', 'shoulder_R', 'elbow_R', 'wrist_R',
-                     'shoulder_L', 'elbow_L', 'wrist_L',
+        self.keys = ['neck', 'right_shoulder', 'right_elbow', 'right_wrist',
+                     'left_shoulder', 'left_elbow', 'left_wrist',
                      'shoulders', 'elbows', 'wrists', 'trunk',
-                     'legs', 'leg_R', 'leg_L',
+                     'legs', 'right_leg', 'left_leg',
                      'groupA', 'groupB', 'reba']
         # create the map of deque the reba score
         self.reba_log = {}
@@ -188,7 +184,7 @@ class RebaAssess(object):
         # shoulders
         self.polynomial_fit2["shoulders"] = []
         self.polynomial_fit2["shoulders"].append(
-            np.polyfit([0.0, 1.5708, 3.14157], [0, 0.8, 1], 2))  # abduction
+            np.polyfit([0.0, 1.5708, 3.14157], [1, 0, 1], 2))  # abduction
         self.polynomial_fit2["shoulders"].append(
             np.polyfit([-1.5708, 0.0, 1.5708],
                        [4, 1, 4], 2))  # flexion
@@ -199,19 +195,19 @@ class RebaAssess(object):
         # elbows
         self.polynomial_fit2["elbows"] = []
         self.polynomial_fit2["elbows"].append(
-            np.polyfit([0, 1.0472, 1.74533], [2, 1, 2], 2))  # flexion right side
+            np.polyfit([0, 1.0472, 2.53073], [2, 1, 2], 2))  # flexion right side
         self.polynomial_fit2["elbows"].append(
-            np.polyfit([0, -1.0472, -1.74533], [2, 1, 2], 2))  # flexion left side
+            np.polyfit([0, -1.0472, -2.53073], [2, 1, 2], 2))  # flexion left side
         # wrists
         self.polynomial_fit2["wrists"] = []
         self.polynomial_fit2["wrists"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
-            np.polyfit([-0.78539816339, 0, 0.78539816339], [1, 0, 1], 2))
+            np.polyfit([-1.0472, 0, 1.0472], [1, 0, 1], 2))
         self.polynomial_fit2["wrists"].append(
-            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))  # flexion
+            np.polyfit([-1.0472, 0, 1.0472], [2, 1, 2], 2))  # flexion
         self.polynomial_fit2["wrists"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
-            np.polyfit([-0.78539816339, 0, 0.78539816339], [1, 0, 1], 2))
+            np.polyfit([-1.0472, 0, 1.0472], [1, 0, 1], 2))
         # trunk
         self.polynomial_fit2["trunk"] = []
         self.polynomial_fit2["trunk"].append(
@@ -283,17 +279,16 @@ class RebaAssess(object):
             self.reba_dict['right_wrist_' + str(i)] = {'group_name': 'wrists', 'index': i}
             self.reba_dict['left_wrist_' + str(i)] = {'group_name': 'wrists', 'index': i}
         # add missing joints
-        self.reba_dict['neck_' + str(2)] = {'group_name': 'neck', 'index': 2}
-        self.reba_dict['spine_' + str(2)] = {'group_name': 'trunk', 'index': 2}
-        self.reba_dict['right_shoulder_' + str(2)] = {'group_name': 'shoulders', 'index': 2}
-        self.reba_dict['left_shoulder_' + str(2)] = {'group_name': 'shoulders', 'index': 2}
-        self.reba_dict['right_knee'] = {'group_name': 'legs', 'index': 0}
-        self.reba_dict['left_knee'] = {'group_name': 'legs', 'index': 0}
-        self.reba_dict['right_elbow_' + str(0)] = {'group_name': 'elbows', 'index': 0}
-        self.reba_dict['left_elbow_' + str(0)] = {'group_name': 'elbows', 'index': 1}
-        # specific case elbow twisting which is considered as wrist in reba
-        self.reba_dict['right_elbow_' + str(1)] = {'group_name': 'wrists', 'index': 2}
-        self.reba_dict['left_elbow_' + str(1)] = {'group_name': 'wrists', 'index': 2}
+        self.reba_dict['neck_2'] = {'group_name': 'neck', 'index': 2}
+        self.reba_dict['spine_2'] = {'group_name': 'trunk', 'index': 2}
+        self.reba_dict['right_shoulder_2'] = {'group_name': 'shoulders', 'index': 2}
+        self.reba_dict['left_shoulder_2'] = {'group_name': 'shoulders', 'index': 2}
+        self.reba_dict['right_wrist_2'] = {'group_name': 'wrists', 'index': 2}
+        self.reba_dict['left_wrist_2'] = {'group_name': 'wrists', 'index': 2}
+        self.reba_dict['right_knee_0'] = {'group_name': 'legs', 'index': 0}
+        self.reba_dict['left_knee_0'] = {'group_name': 'legs', 'index': 0}
+        self.reba_dict['right_elbow_0'] = {'group_name': 'elbows', 'index': 0}
+        self.reba_dict['left_elbow_0'] = {'group_name': 'elbows', 'index': 1}
 
     def deriv_assess_posture(self, joints, names):
         # calculate each score individually
@@ -319,6 +314,20 @@ class RebaAssess(object):
                 if names[i] in save_dict.keys():
                     save_dict[names[i]].append(value)
 
+    def assess_group(self, state, keys):
+        score_dict = {}
+        for k in keys:
+            score = 0
+            for i in range(k[1]):
+                name = k[0] + '_' + str(i)
+                reba_group = self.reba_dict[name]
+                value = self.assign_value2(state.position[state.name.index(name)],
+                                           reba_group['group_name'],
+                                           reba_group['index'])
+                score += value
+            score_dict[k[0]] = score
+        return score_dict
+
     def _assess_from_polynomes(self, joint_state):
         # calculate the reba based on sum of polynoms
         sum_reba = 0
@@ -340,8 +349,8 @@ class RebaAssess(object):
                 X.append(joint_state.position[joint_state.name.index(j)])
             else:
                 X.append(0.0)
-        score = self.neural_model.predict([np.array([X])])
-        return float(score[0][0])
+        prediction = self.neural_model.predict([np.array([X])])
+        return float(np.argmax(prediction)) + 1
 
     def assess_posture(self, state, method):
         if isinstance(state, RobotState):
