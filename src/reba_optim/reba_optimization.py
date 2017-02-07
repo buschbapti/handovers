@@ -3,13 +3,14 @@ from human_moveit_config.human_model import HumanModel
 from .reba_assess import RebaAssess
 from scipy.optimize import minimize
 from scipy.optimize import differential_evolution
-# from scipy.optimize import basinhopping
+from scipy.optimize import basinhopping
 import math
 from numpy import linspace
 from numpy import sqrt
 from transformations import multiply_transform
 from numpy.linalg import norm
 from numpy.random import uniform
+import sys
 
 
 class RebaOptimization(object):
@@ -44,7 +45,7 @@ class RebaOptimization(object):
         else:
             self.assessment_method = 'polynomial'
         # initialize human model
-        self.model = HumanModel()
+        self.model = HumanModel(control=True)
         # initialize REBA technique
         self.reba = RebaAssess()
         self.previous_joints = []
@@ -105,13 +106,13 @@ class RebaOptimization(object):
         cost = 2 * (np.dot(OH, Hx) + 1)
         # check additional constraints based on object orientation
         qo = np.array(obj_pose[1])
-        z_obj = [2 * (qo[0] * qo[2] + qo[1] * qo[3]),
-                 2 * (qo[1] * qo[2] - qo[0] * qo[3]),
-                 1 - 2 * qo[0] * qo[0] - 2 * qo[1] * qo[1]]
-        value = min(1, max(np.dot(-np.array(Hx), z_obj), -1))
+        z_obj = [-2 * (qo[0] * qo[2] + qo[1] * qo[3]),
+                 -2 * (qo[1] * qo[2] - qo[0] * qo[3]),
+                 -(1 - 2 * qo[0] * qo[0] - 2 * qo[1] * qo[1])]
+        value = min(1, max(np.dot(Hx, z_obj), -1))
         theta = math.acos(value)
-        if abs(theta) > angle_tresh:
-            cost += 1 * abs(theta - angle_tresh)
+        if theta > angle_tresh:
+            cost += 1 * (theta - angle_tresh)
         return cost
 
     def calculate_velocity_cost(self, joints, dt=0.1):
@@ -204,11 +205,11 @@ class RebaOptimization(object):
             # calculate cost based on the fixed frames
             C_fixed_frame = self.calculate_fixed_frame_cost(fk_dict, fixed_frames)
             # extract hand pose
-            hand_pose = fk_dict[side + '_hand']
+            hand_pose = fk_dict[self.model.prefix + '/' + side + '_hand']
             # calculate the cost based on the task
             C_task = self.calculate_task_cost(hand_pose, i)
             # calculate the cost of having the object in sight
-            head_pose = fk_dict['head']
+            head_pose = fk_dict[self.model.prefix + '/head']
             # if the task is received the model look at its hand
             if self.task == 'receive':
                 C_sight = self.calculate_sight_cost(hand_pose, head_pose)
@@ -229,8 +230,9 @@ class RebaOptimization(object):
             cost_details['task'][i] = C_task
             cost_details['sight'][i] = C_sight
 
-        print cost
-        return max(cost)
+        sum_cost = sum(cost)
+        print sum_cost
+        return sum_cost
 
     def generate_welding_points(self, welding_radius=0.2, nb_points=10):
         assert nb_points % 2 == 0
@@ -315,6 +317,15 @@ class RebaOptimization(object):
                                          args=(side, fixed_joints, fixed_frames, costs, nb_points),
                                          bounds=joint_limits + param_limits,
                                          maxiter=maxiter)
+        elif self.optimizer == 'anneal':
+            res = basinhopping(self.cost_function, init_joints + opt_params,
+                               minimizer_kwargs={"method": "L-BFGS-B",
+                                                 "args": (side, fixed_joints, fixed_frames, costs, nb_points)})
+                               # bounds=joint_limits + param_limits)
+                               # niter=maxiter)
+        else:
+            print "Unknown optimization method"
+            sys.exit(1)
 
         nb_joints = (len(res.x) - self.nb_params) / nb_points
         for i in range(nb_points):
