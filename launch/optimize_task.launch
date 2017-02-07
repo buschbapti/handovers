@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="method" default="reba"/> <!-- gradient or naive -->
+	<arg name="method" default="reba"/> <!-- reba or naive -->
 	<arg name="optimizer" default="gradient"/> <!-- gradient or evolution -->
 	<arg name="arm_constrained" default="False"/>
 	<arg name="task" default="receive"/> <!-- receive or welding -->
