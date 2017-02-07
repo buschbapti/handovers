@@ -8,13 +8,16 @@ import rospy
 import numpy as np
 from threading import Lock
 from collections import deque
+from human_moveit_config.human_model import HumanModel
+from tools.unity_bridge import UnityBridge
 
 
 class RebaCalculator(object):
     def __init__(self):
+        self.model = HumanModel()
         self.reba = RebaAssess()
         self.reba_buffer = {}
-        self.buffer_size = 5
+        self.buffer_size = 2
         self.max_time_reset = rospy.Duration(5)
         self.last_time_message = rospy.get_rostime()
         self.reset = True
@@ -26,19 +29,39 @@ class RebaCalculator(object):
         self.reba_buffer['total'] = deque(maxlen=self.buffer_size)
         self.stream_index = 0
         self.init_plotly_streaming()
+        self.bridge = UnityBridge()
 
     def init_plotly_streaming(self):
         stream_ids = tls.get_credentials_file()['stream_ids']
         # create sublplot figure
-        fig = tls.make_subplots(rows=3, cols=4, specs=[[{}, {}, {}, {}], [{}, {}, {}, {}], [{'colspan': 4}, None, None, None]],
-                                subplot_titles=('Spine', 'Neck', 'Left Shoulder', 'Right Shoulder', 'Left Elbow',
-                                                'Right Elbow', 'Left Wrist', 'Right Wrist', 'Total'))
-        score_range = [[0, 7], [0, 5], [0, 8], [0, 8], [0, 3],
-                       [0, 3], [0, 5], [0, 5], [0, 10]]
+        fig = tls.make_subplots(rows=3, cols=4, specs=[[{}, {}, {}, {}],
+                                                       [{}, {}, {}, {}],
+                                                       [{'colspan': 4}, None, None, None]],
+                                subplot_titles=('Spine', 'Neck', 'Left Shoulder', 'Right Shoulder',
+                                                'Left Elbow', 'Right Elbow', 'Left Wrist', 'Right Wrist',
+                                                'Total'))
+
+        self.score_range = {}
+        self.score_range['spine'] = [0, 7]
+        self.score_range['neck'] = [0, 5]
+        self.score_range['left_shoulder'] = [0, 8]
+        self.score_range['right_shoulder'] = [0, 8]
+        self.score_range['left_elbow'] = [0, 5]
+        self.score_range['right_elbow'] = [0, 5]
+        self.score_range['left_wrist'] = [0, 5]
+        self.score_range['right_wrist'] = [0, 5]
         # add the layout
         fig['layout'].update(showlegend=False, title='REBA Score')
-        for i in range(len(score_range)):
-            fig['layout']['yaxis' + str(i + 1)].update(title='score', range=score_range[i])
+        for i, g in enumerate(self.groups):
+            fig['layout']['yaxis' + str(i + 1)].update(title='score', range=self.score_range[g[0]])
+        fig['layout']['yaxis9'].update(title='score', range=[0, 10])
+
+        # aplly layout for the 3d model
+        scene = dict(xaxis=dict(range=[-1, 1]),
+                     yaxis=dict(range=[-1, 1]),
+                     zaxis=dict(range=[-0.5, 1]),
+                     camera=dict(eye=dict(x=1.7, y=1.7, z=0.5)))
+        fig['layout']['scene1'].update(scene)
 
         # Get stream id from stream id list
         for i, g in enumerate(self.groups):
@@ -86,9 +109,14 @@ class RebaCalculator(object):
 
     def reset_stream(self):
         self.stream_index = 0
-        for key, s in self.streams.iteritems():
-            self.reba_buffer[key] = deque(maxlen=self.buffer_size)
-            s.write(dict(x=[], y=[]))
+        for g in self.groups:
+            self.reba_buffer[g[0]] = deque(maxlen=self.buffer_size)
+            self.streams[g[0]].write(dict(x=[], y=[]))
+        # reset total
+        self.reba_buffer['total'] = deque(maxlen=self.buffer_size)
+        self.streams['total'].write(dict(x=[], y=[]))
+        # reset model
+        # self.streams['model'].write(Scatter3d(x=[], y=[], z=[]))
         self.reset = True
         self.last_time_message = rospy.get_rostime()
 
@@ -105,15 +133,21 @@ class RebaCalculator(object):
         avg = np.mean(self.reba_buffer['total'])
         # stream the data to Plotly
         self.streams['total'].write(dict(x=self.stream_index, y=avg))
+        risk_list = []
         for key, value in reba_dict.iteritems():
             self.reba_buffer[key].append(value)
             avg = np.mean(self.reba_buffer[key])
             # stream the data to Plotly
             self.streams[key].write(dict(x=self.stream_index, y=avg))
+            if avg > 0.3 * self.score_range[key][1]:
+                risk_list.append(key)
+        # eventually advertise the risk
+        if risk_list:
+            self.bridge.activate_risk_frames(risk_list)
 
     def run(self):
-        rate = rospy.Rate(10)
-        rospy.Subscriber('reba_assess', JointState, self.handle_joint_state_msgs)
+        rate = rospy.Rate(1)
+        rospy.Subscriber('/human/set_joint_values', JointState, self.handle_joint_state_msgs)
         while not rospy.is_shutdown():
             # check with latest receive message to reset if necessary
             current_time = rospy.get_rostime()
