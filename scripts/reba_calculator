@@ -43,7 +43,7 @@ class RebaCalculator(object):
 
         self.score_range = {}
         self.score_range['spine'] = [0, 7]
-        self.score_range['neck'] = [0, 5]
+        self.score_range['neck'] = [0, 4]
         self.score_range['left_shoulder'] = [0, 8]
         self.score_range['right_shoulder'] = [0, 8]
         self.score_range['left_elbow'] = [0, 5]
@@ -133,17 +133,19 @@ class RebaCalculator(object):
         avg = np.mean(self.reba_buffer['total'])
         # stream the data to Plotly
         self.streams['total'].write(dict(x=self.stream_index, y=avg))
-        risk_list = []
+        risk_list = {}
         for key, value in reba_dict.iteritems():
             self.reba_buffer[key].append(value)
             avg = np.mean(self.reba_buffer[key])
             # stream the data to Plotly
             self.streams[key].write(dict(x=self.stream_index, y=avg))
-            if avg > 0.3 * self.score_range[key][1]:
-                risk_list.append(key)
+            s_range = self.score_range[key][1]
+            offset_min = 0.
+            offset_max = 0.6
+            pourcent_reba = min((avg - offset_min * s_range) / ((offset_max - offset_min) * s_range), 1.)
+            risk_list[key] = pourcent_reba
         # eventually advertise the risk
-        if risk_list:
-            self.bridge.activate_risk_frames(risk_list)
+        self.bridge.activate_risk_frames(risk_list)
 
     def run(self):
         rate = rospy.Rate(1)
