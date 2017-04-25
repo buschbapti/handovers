@@ -10,6 +10,7 @@ from threading import Lock
 from collections import deque
 from human_moveit_config.human_model import HumanModel
 from tools.unity_bridge import UnityBridge
+from reba_optim.srv import PosturalOptimization
 
 
 class RebaCalculator(object):
@@ -30,6 +31,9 @@ class RebaCalculator(object):
         self.stream_index = 0
         self.init_plotly_streaming()
         self.bridge = UnityBridge()
+        # wait for optimization service
+        rospy.wait_for_service('/reba/postural_optimization')
+        self.reba_optimization = rospy.ServiceProxy('/reba/postural_optimization', PosturalOptimization)
 
     def init_plotly_streaming(self):
         stream_ids = tls.get_credentials_file()['stream_ids']
@@ -146,6 +150,9 @@ class RebaCalculator(object):
             risk_list[key] = pourcent_reba
         # eventually advertise the risk
         self.bridge.activate_risk_frames(risk_list)
+        # optimize the posture to send the ghost
+        res = self.reba_optimization(posture=msg, nb_iterations=10)
+        self.bridge.send_optimal_posture(res.opt_posture)
 
     def run(self):
         rate = rospy.Rate(1)
