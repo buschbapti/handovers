@@ -1,0 +1,4 @@
+sensor_msgs/JointState posture
+uint8 nb_iterations
+---
+sensor_msgs/JointState opt_posture

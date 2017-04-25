@@ -58,6 +58,7 @@ add_service_files(
    FILES
    TrajectoryFromReba.srv
    RebaPose.srv
+   PosturalOptimization.srv
 )
 
 ## Generate actions in the 'action' folder

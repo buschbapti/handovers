@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="task" default="receive"/> <!-- receive or welding -->
+	<arg name="launch_rviz" default="true"/>
+	<arg name="nb_iterations" default="10"/>
+
+	<node pkg="tf" type="static_transform_publisher" name="human_broadcaster" args="0. 0. 0. 0. 0. 0. 1. /base /human/base 100" />
+	
+	<include file="$(find human_moveit_config)/launch/demo.launch">
+		<arg name="launch_rviz" value="$(arg launch_rviz)"/>
+	</include>
+	
+	<rosparam command="load" file="$(find human_moveit_config)/tmp/human_length.json" param="human/lengths"/>
+
+	<node name="postural_optimization_srv" pkg="reba_optim" type="postural_optimization_srv" output="screen" required="True" args="$(arg task) $(arg nb_iterations)"/>
+</launch>

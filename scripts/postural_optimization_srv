@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+import rospy
+from reba_optim.reba_optimization import RebaOptimization
+from reba_optim.srv import PosturalOptimization, PosturalOptimizationResponse
+
+
+class PosturalOptimizationSRV(object):
+    def __init__(self):
+        # initialize parameters
+        parameters = {}
+        self.fixed_frames = {}
+        self.fixed_joints = self.init_fixed_joints()
+
+        # set the optimizer between gradient or evolution
+        parameters['optimizer'] = 'gradient'
+        parameters['assessment_method'] = 'reba'
+
+        # get initial pose of the object
+        try:
+            parameters['object_pose'] = rospy.get_param('/object/pose')
+        except Exception:
+            parameters['object_pose'] = [[0.5, 0.0, 0.2], [0, 0, 0, 1]]
+        f_reba = 1
+        f_proxemics = 50
+        f_sight = 5
+        parameters['cost_factors'] = [f_reba, f_proxemics, f_sight]
+        self.optim = RebaOptimization(params=parameters)
+
+    def init_fixed_joints(self):
+        # by default hip and ankles angles are fixed
+        fixed_joints = {}
+        fixed_joints['right_hip_0'] = 0.
+        fixed_joints['right_hip_1'] = 0.
+        fixed_joints['right_hip_2'] = 0.
+        fixed_joints['right_knee_0'] = 0.
+        fixed_joints['right_ankle_0'] = 0.
+        fixed_joints['right_ankle_1'] = 0.
+
+        fixed_joints['left_hip_0'] = 0.
+        fixed_joints['left_hip_1'] = 0.
+        fixed_joints['left_hip_2'] = 0.
+        fixed_joints['left_knee_0'] = 0.
+        fixed_joints['left_ankle_0'] = 0.
+        fixed_joints['left_ankle_1'] = 0.
+        return fixed_joints
+
+    def handle_postural_optimization(self, req):
+        # optimize to find the pose of the hand
+        res, cost_details = self.optim.optimize_posture(req.posture, 'postural_optization',
+                                                        fixed_joints=self.fixed_joints,
+                                                        fixed_frames=self.fixed_frames,
+                                                        group_names='upper_body',
+                                                        maxiter=req.nb_iterations)
+        return PosturalOptimizationResponse(res[0])
+
+    def run(self):
+        rospy.Service('/reba/postural_optimization', PosturalOptimization,
+                      self.handle_postural_optimization)
+        rospy.loginfo("Postural Optimization Server started.")
+        rospy.spin()
+
+
+if __name__ == '__main__':
+    rospy.init_node('postural_optimization_srv')
+    opt = PosturalOptimizationSRV()
+    opt.run()
