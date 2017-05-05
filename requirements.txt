@@ -1,0 +1,6 @@
+xmltodict
+Theano
+Keras
+Cython
+tensorflow
+plotly
