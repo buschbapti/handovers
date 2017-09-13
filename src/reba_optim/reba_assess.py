@@ -80,6 +80,15 @@ class RebaAssess(object):
         self.A_coeff = [0.03822852, 0.75622637, 0.7621335]
         self.B_coeff = [0.06068095, 0.68147439, 0.03933057]
 
+        self.discount_factor = {}
+        self.discount_factor['neck'] = [0.30283341, 1.00822059, 0.52364692]
+        self.discount_factor['trunk'] = [1.51872174, 1.39895715, 1.85629944]
+        self.discount_factor['legs'] = [0.41615015]
+        self.discount_factor['elbows'] = [0.10742893, 0.10742893]
+        self.discount_factor['shoulders'] = [0.24304587, 0.55354204]
+        self.discount_factor['wrists'] = [0.09637051, 0.84326106, 0.69796194]
+        self.discount_factor['residual'] = -0.20583487
+
     def reba_logger_init(self, deque_size):
         # create list of keys
         self.keys = ['neck', 'right_shoulder', 'right_elbow', 'right_wrist',
@@ -101,79 +110,79 @@ class RebaAssess(object):
         # legs
         self.polynomial_fit["legs"] = []
         self.polynomial_fit["legs"].append(
-            np.polyfit([-1.0472, 0, 1.0472],
-                       [3, 1, 3], 2))  # knee flexion
+            np.polyfit([-1.0472, 0., 1.0472],
+                       [2., 0., 2.], 2))  # knee flexion
         self.polynomial_fit["deriv_legs"] = []
-        for p in self.polynomial_fit["legs"]:
-            self.polynomial_fit["deriv_legs"].append(
-                np.polyder(p))
+        # for p in self.polynomial_fit["legs"]:
+        #     self.polynomial_fit["deriv_legs"].append(
+        #         np.polyder(p))
         # shoulders
         self.polynomial_fit["shoulders"] = []
         self.polynomial_fit["shoulders"].append(
-            np.polyfit([0.0, 1.5708, 3.14157], [4, 1, 4], 2))  # abduction
+            np.polyfit([0.7854, 1.5708, 2.3561], [1., 0., 1.], 2))  # abduction
         self.polynomial_fit["shoulders"].append(
-            np.polyfit([-1.5708, 0.0, 1.5708],
-                       [4, 1, 4], 2))  # flexion
+            np.polyfit([-1.5708, 0., 1.5708],
+                       [3., 0., 3.], 2))  # flexion
         self.polynomial_fit["shoulders"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
-            np.polyfit([-1.5708, 0.0, 1.5708],
-                       [4, 1, 4], 2))
-        self.polynomial_fit["deriv_shoulders"] = []
-        for p in self.polynomial_fit["shoulders"]:
-            self.polynomial_fit["deriv_shoulders"].append(
-                np.polyder(p))
+            np.polyfit([-0.7854, 0., 0.7854],
+                       [1., 0., 1.], 2))
+        # self.polynomial_fit["deriv_shoulders"] = []
+        # for p in self.polynomial_fit["shoulders"]:
+        #     self.polynomial_fit["deriv_shoulders"].append(
+        #         np.polyder(p))
         # elbows
         self.polynomial_fit["elbows"] = []
         self.polynomial_fit["elbows"].append(
-            np.polyfit([0, 1.0472, 1.74533], [2, 1, 2], 2))  # flexion right side
+            np.polyfit([0., 1.0472, 1.7453], [1., 0., 1.], 2))  # flexion right side
         self.polynomial_fit["elbows"].append(
-            np.polyfit([0, -1.0472, -1.74533], [2, 1, 2], 2))  # flexion left side
-        self.polynomial_fit["deriv_elbows"] = []
-        for p in self.polynomial_fit["elbows"]:
-            self.polynomial_fit["deriv_elbows"].append(
-                np.polyder(p))
+            np.polyfit([0., -1.0472, -1.7453], [1., 0., 1.], 2))  # flexion left side
+        # self.polynomial_fit["deriv_elbows"] = []
+        # for p in self.polynomial_fit["elbows"]:
+        #     self.polynomial_fit["deriv_elbows"].append(
+        #         np.polyder(p))
         # wrists
         self.polynomial_fit["wrists"] = []
         self.polynomial_fit["wrists"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
-            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))
+            np.polyfit([-0.7854, 0., 0.7854], [1., 0., 1.], 2))
         self.polynomial_fit["wrists"].append(
-            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))  # flexion
+            np.polyfit([-0.7854, 0., 0.7854], [1., 0., 1.], 2))  # flexion
         self.polynomial_fit["wrists"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
-            np.polyfit([-0.78539816339, 0, 0.78539816339], [2, 1, 2], 2))
-        self.polynomial_fit["deriv_wrists"] = []
-        for p in self.polynomial_fit["wrists"]:
-            self.polynomial_fit["deriv_wrists"].append(
-                np.polyder(p))
+            np.polyfit([-0.7854, 0., 0.7854], [1., 0., 1.], 2))
+        # self.polynomial_fit["deriv_wrists"] = []
+        # for p in self.polynomial_fit["wrists"]:
+        #     self.polynomial_fit["deriv_wrists"].append(
+        #         np.polyder(p))
         # trunk
         self.polynomial_fit["trunk"] = []
         self.polynomial_fit["trunk"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
-            np.polyfit([-1.0472, 0.0, 1.0472], [3, 1, 3], 2))
+            np.polyfit([-0.7854, 0., 0.7854], [1., 0., 1.], 2))
         self.polynomial_fit["trunk"].append(
-            np.polyfit([-1.0472, 0.0, 1.0472], [3, 1, 3], 2))  # flexion
+            np.polyfit([-1.5708, 0., 1.5708], [3., 0., 3.], 2))  # flexion
         self.polynomial_fit["trunk"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
-            np.polyfit([-1.0472, 0.0, 1.0472], [3, 1, 3], 2))
-        self.polynomial_fit["deriv_trunk"] = []
-        for p in self.polynomial_fit["trunk"]:
-            self.polynomial_fit["deriv_trunk"].append(
-                np.polyder(p))
+            np.polyfit([-0.7854, 0.0, 0.7854], [1., 0., 1.], 2))
+        # self.polynomial_fit["deriv_trunk"] = []
+        # for p in self.polynomial_fit["trunk"]:
+        #     self.polynomial_fit["deriv_trunk"].append(
+        #         np.polyder(p))
         # neck
         self.polynomial_fit["neck"] = []
         self.polynomial_fit["neck"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # bend
-            np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))
+            np.polyfit([-0.78539816339, 0.0, 0.78539816339], [1., 0, 1.], 2))
         self.polynomial_fit["neck"].append(
-            np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))  # flexion
+            np.polyfit([-0.6109, 0.1745, 0.9599], [1., 0., 1.], 2))  # flexion
         self.polynomial_fit["neck"].append(
             # np.polyfit([-1.5708, 0, 1.5708], [1, 0, 1], 2))  # twist
-            np.polyfit([-1.39626, 0.174533, 1.5708], [2, 1, 2], 2))
-        self.polynomial_fit["deriv_neck"] = []
-        for p in self.polynomial_fit["neck"]:
-            self.polynomial_fit["deriv_neck"].append(
-                np.polyder(p))
+            np.polyfit([-0.78539816339, 0.0, 0.78539816339], [1, 0, 1], 2))
+        # self.polynomial_fit["deriv_neck"] = []
+        # for p in self.polynomial_fit["neck"]:
+        #     self.polynomial_fit["deriv_neck"].append(
+        #         np.polyder(p))
 
     def init_poly_fit2(self):
         # legs
@@ -263,7 +272,7 @@ class RebaAssess(object):
 
     def assign_value(self, joint, group_name, index):
         coeffs = self.polynomial_fit[group_name][index]
-        return np.polyval(coeffs, joint)
+        return np.polyval(coeffs, joint) * self.discount_factor[group_name][index]
 
     def assign_value2(self, joint, group_name, index):
         coeffs = self.polynomial_fit2[group_name][index]
@@ -281,8 +290,8 @@ class RebaAssess(object):
         # add missing joints
         self.reba_dict['neck_2'] = {'group_name': 'neck', 'index': 2}
         self.reba_dict['spine_2'] = {'group_name': 'trunk', 'index': 2}
-        self.reba_dict['right_shoulder_2'] = {'group_name': 'shoulders', 'index': 2}
-        self.reba_dict['left_shoulder_2'] = {'group_name': 'shoulders', 'index': 2}
+        # self.reba_dict['right_shoulder_2'] = {'group_name': 'shoulders', 'index': 2}
+        # self.reba_dict['left_shoulder_2'] = {'group_name': 'shoulders', 'index': 2}
         self.reba_dict['right_wrist_2'] = {'group_name': 'wrists', 'index': 2}
         self.reba_dict['left_wrist_2'] = {'group_name': 'wrists', 'index': 2}
         self.reba_dict['right_knee_0'] = {'group_name': 'legs', 'index': 0}
@@ -330,7 +339,7 @@ class RebaAssess(object):
 
     def _assess_from_polynomes(self, joint_state):
         # calculate the reba based on sum of polynoms
-        sum_reba = 0
+        sum_reba = 0.
         names = joint_state.name
         joints = joint_state.position
         for i in range(len(names)):
@@ -340,7 +349,7 @@ class RebaAssess(object):
                                           reba_group['group_name'],
                                           reba_group['index'])
                 sum_reba += value
-        return sum_reba
+        return sum_reba + self.discount_factor['residual']
 
     def _assess_from_neural_model(self, joint_state):
         X = []
@@ -350,7 +359,7 @@ class RebaAssess(object):
             else:
                 X.append(0.0)
         prediction = self.neural_model.predict([np.array([X])])
-        return float(np.argmax(prediction)) + 1
+        return float(np.argmax(prediction)) + 1.
 
     def assess_posture(self, state, method):
         if isinstance(state, RobotState):
