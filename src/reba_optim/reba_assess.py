@@ -2,7 +2,7 @@ import numpy as np
 from collections import deque
 import json
 import os.path
-from keras.models import load_model
+#from keras.models import load_model
 import rospkg
 from os.path import join
 from moveit_msgs.msg import RobotState
@@ -31,7 +31,7 @@ class RebaAssess(object):
         modelName = "reba3"
         modelVersion = 2
         modelName = "model-" + modelName + '-' + str(modelVersion)
-        self.neural_model = load_model(join(config_dir, modelName + '-full.h5'))
+        #self.neural_model = load_model(join(config_dir, modelName + '-full.h5'))
 
         self.assess_joints = ['neck_0', 'neck_1', 'neck_2', 'spine_0', 'spine_1', 'spine_2', 'right_knee_0',
                               'left_knee_0', 'right_shoulder_0', 'right_shoulder_1', 'left_shoulder_0',
@@ -358,7 +358,7 @@ class RebaAssess(object):
                 X.append(joint_state.position[joint_state.name.index(j)])
             else:
                 X.append(0.0)
-        prediction = self.neural_model.predict([np.array([X])])
+        #prediction = self.neural_model.predict([np.array([X])])
         return float(np.argmax(prediction)) + 1.
 
     def assess_posture(self, state, method):
